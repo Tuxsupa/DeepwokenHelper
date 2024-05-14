@@ -1,0 +1,8 @@
+__pycache__
+.venv/
+.vscode/
+yolov5/
+tesseract/
+*.spec
+build/
+dist/

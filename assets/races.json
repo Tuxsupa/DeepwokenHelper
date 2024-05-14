@@ -1,0 +1,95 @@
+{
+    "races": [
+        "Etrean",
+        "Celtor",
+        "Adret",
+        "Canor",
+        "Gremor",
+        "Khan",
+        "Felinor",
+        "Chrysid",
+        "Vesperian",
+        "Capra",
+        "Ganymede",
+        "Tiran",
+        "Drakkard",
+        "Lightborn"
+    ],
+    "racesStats": {
+        "Etrean": {
+            "Agility": 2,
+            "Intelligence": 2
+        },
+        "Celtor": {
+            "Intelligence": 2,
+            "Charisma": 2
+        },
+        "Adret": {
+            "Willpower": 2,
+            "Charisma": 2
+        },
+        "Canor": {
+            "Strength": 2,
+            "Charisma": 2
+        },
+        "Gremor": {
+            "Strength": 2,
+            "Fortitude": 2
+        },
+        "Khan": {
+            "Strength": 2,
+            "Agility": 2
+        },
+        "Felinor": {
+            "Agility": 2,
+            "Charisma": 2
+        },
+        "Chrysid": {
+            "Agility": 2,
+            "Charisma": 2
+        },
+        "Vesperian": {
+            "Fortitude": 2,
+            "Willpower": 2
+        },
+        "Capra": {
+            "Intelligence": 2,
+            "Willpower": 2
+        },
+        "Ganymede": {
+            "Intelligence": 2,
+            "Willpower": 2
+        },
+        "Tiran": {
+            "Agility": 2,
+            "Willpower": 2
+        },
+        "Drakkard": {
+            "Agility": 2,
+            "Fortitude": 2
+        },
+        "Lightborn": {
+            "Strength": 2,
+            "Fortitude": 2,
+            "Agility": 2,
+            "Intelligence": 2,
+            "Willpower": 2
+        }
+    },
+    "racesStatsBonuses": {
+        "Etrean": "AGL, INT",
+        "Celtor": "INT, CHA",
+        "Adret": "WIL, CHA",
+        "Canor": "STR, CHA",
+        "Gremor": "STR, FTD",
+        "Khan": "STR, AGL",
+        "Felinor": "AGL, CHA",
+        "Chrysid": "AGL, CHA",
+        "Vesperian": "FTD, WIL",
+        "Capra": "INT, WIL",
+        "Ganymede": "INT, WIL",
+        "Tiran": "AGL, WIL",
+        "Drakkard": "AGL, FTD",
+        "Lightborn": "ALL but CHA"
+    }
+}
