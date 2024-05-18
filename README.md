@@ -5,7 +5,7 @@
   <p>
     Deepwoken Helper to help you choose your cards.
   </p>
-  <a href="https://github.com/Tuxsupa/DeepwokenHelper/releases"><img alt="Deepwoken Helper downloads" src="https://img.shields.io/github/downloads/Tuxsupa/DeepwokenHelper/total?label=Downloads"/></a>
+  <a href="https://github.com/Tuxsupa/DeepwokenHelper/releases"><img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/Tuxsupa/DeepwokenHelper/total?label=Downloads&color=green"></a>
 </div>
 
 # How does this work?
