@@ -1,6 +1,8 @@
 import re
 import sys
+import threading
 import webbrowser
+from multiprocessing import freeze_support
 
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
@@ -28,11 +30,11 @@ class DeepwokenHelper(QMainWindow):
         self.ocr = DeepwokenOCR(self)
         self.ocr.addCardsSignal.connect(self.add_cards)
         self.ocr.loadingSignal.connect(self.loading)
-        self.ocr.start()
+        # self.ocr.start()
         
-        # self.ocr_thread = threading.Thread(target=self.ocr.run)
-        # self.ocr_thread.daemon = True
-        # self.ocr_thread.start()
+        ocr_thread = threading.Thread(target=self.ocr.run)
+        ocr_thread.daemon = True
+        ocr_thread.start()
         
         self.main()
 
@@ -1079,6 +1081,7 @@ class SettingsWindow(QWidget):
 
 
 if __name__ == '__main__':
+    freeze_support()
     app = QApplication(sys.argv)
     mainWindow = DeepwokenHelper()
     mainWindow.show()

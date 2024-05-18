@@ -1,12 +1,9 @@
 PyQt6==6.7.0
 opencv-python==4.9.0.80 
-torch==2.3.0
-PyWinCtl==0.4
-PyAutoGUI==0.9.54
+pywin32==306
 pytesseract==0.3.10
 requests==2.31.0
 imutils==0.5.4
 keyboard==0.13.5
-pandas==2.2.2
 ultralytics==8.2.15
 git+https://github.com/z3ntu/QtWaitingSpinner.git

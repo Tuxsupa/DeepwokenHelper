@@ -6,3 +6,5 @@ tesseract/
 *.spec
 build/
 dist/
+setups/
+setup.iss

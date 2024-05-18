@@ -3,20 +3,21 @@ import os
 import difflib
 
 import cv2
-# import onnxruntime
 import numpy as np
-import torch
-import pywinctl as pwc
-import pyautogui
 import pytesseract
 import imutils
 import keyboard
+from ultralytics import YOLO
 
-from PyQt6.QtCore import pyqtSignal, QSettings, QThread
+import win32gui
+import win32ui
+import win32con
+
+from PyQt6.QtCore import pyqtSignal, QSettings, QObject
 from PyQt6.QtGui import QKeySequence
 
 
-class DeepwokenOCR(QThread):
+class DeepwokenOCR(QObject):
     addCardsSignal = pyqtSignal(list)
     loadingSignal = pyqtSignal(bool)
     
@@ -39,10 +40,8 @@ class DeepwokenOCR(QThread):
         self.hotkey2 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
         
     def run(self):
-        model_file_path = './assets/ocr_model.onnx'
-        # # ort_session = onnxruntime.InferenceSession(model_file_path)
-        # self.model = torch.hub.load('ultralytics/yolov5', 'custom', model_file_path)
-        self.model = torch.hub.load('./yolov5', 'custom', model_file_path, source='local')
+        self.model = YOLO('./assets/title_model.onnx', "detect")
+        self.model(np.zeros((640, 640, 3), dtype=np.uint8))
         
         self.main()
 
@@ -50,8 +49,6 @@ class DeepwokenOCR(QThread):
     def get_window_log(self):
         log_location = os.environ['LOCALAPPDATA'] + r"\Roblox\logs"
         search_pattern = r"\[FLog::SurfaceController\] \[_:1\]::replaceDataModel: \(stage:0, window = (\S+?)\)"
-        
-        active_window_id = pwc.getActiveWindow().getHandle()
         
         files_in_folder = os.listdir(log_location)
         text_files = [file for file in files_in_folder if file.endswith(".log")]
@@ -68,8 +65,56 @@ class DeepwokenOCR(QThread):
                     hex_value = match.group(1)
                     decimal_value = int(hex_value, 16)
 
-                    if active_window_id == decimal_value:
+                    if self.hwnd == decimal_value:
                         return file_path
+
+
+    def get_screenshot(self):
+        # get the window size
+        window_rect = win32gui.GetWindowRect(self.hwnd)
+        
+        self.w = window_rect[2] - window_rect[0]
+        self.h = window_rect[3] - window_rect[1]
+
+        # account for the window border and titlebar and cut them off
+        border_pixels = 8
+        titlebar_pixels = 30
+        self.w = self.w - (border_pixels * 2)
+        self.h = self.h - titlebar_pixels - border_pixels
+        cropped_x = border_pixels
+        cropped_y = titlebar_pixels
+
+        # set the cropped coordinates offset so we can translate screenshot
+        # images into actual screen positions
+        offset_x = window_rect[0] + cropped_x
+        offset_y = window_rect[1] + cropped_y
+
+        # get the window image data
+        wDC = win32gui.GetWindowDC(self.hwnd)
+        dcObj = win32ui.CreateDCFromHandle(wDC)
+        cDC = dcObj.CreateCompatibleDC()
+        dataBitMap = win32ui.CreateBitmap()
+        dataBitMap.CreateCompatibleBitmap(dcObj, self.w, self.h)
+        cDC.SelectObject(dataBitMap)
+        cDC.BitBlt((0, 0), (self.w, self.h), dcObj, (cropped_x, cropped_y), win32con.SRCCOPY)
+
+        # convert the raw data into a format opencv can read
+        #dataBitMap.SaveBitmapFile(cDC, 'debug.bmp')
+        signedIntsArray = dataBitMap.GetBitmapBits(True)
+        img = np.fromstring(signedIntsArray, dtype='uint8')
+        img.shape = (self.h, self.w, 4)
+
+        # free resources
+        dcObj.DeleteDC()
+        cDC.DeleteDC()
+        win32gui.ReleaseDC(self.hwnd, wDC)
+        win32gui.DeleteObject(dataBitMap.GetHandle())
+
+        img = img[...,:3]
+        # img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        img = np.ascontiguousarray(img)
+        
+        return img
 
 
     def get_choice_type(self, log_path):
@@ -172,10 +217,10 @@ class DeepwokenOCR(QThread):
         # cv2.imwrite('./latest/paint.png', paint_tmptl)
         # cv2.imwrite('./latest/hidden.png', result)
         
-        # # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-        # # cv2.imshow('image', img)
-        # # cv2.namedWindow("template", cv2.WINDOW_NORMAL)
-        # # cv2.imshow('template', tmplt)
+        # cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+        # cv2.imshow('image', img)
+        # cv2.namedWindow("template", cv2.WINDOW_NORMAL)
+        # cv2.imshow('template', tmplt)
         
         # cv2.namedWindow("hidden", cv2.WINDOW_NORMAL)
         # cv2.imshow('hidden', result)
@@ -186,6 +231,10 @@ class DeepwokenOCR(QThread):
     
     def process_ocr(self):
         print("Taking screenshot...")
+        
+        self.hwnd = win32gui.FindWindow(None, "Roblox")
+        if not self.hwnd:
+            raise Exception('Roblox not found')
                     
         log_path = self.get_window_log()
         self.choice_type = self.get_choice_type(log_path)
@@ -193,68 +242,49 @@ class DeepwokenOCR(QThread):
         print(self.choice_type)
         if self.choice_type == "nil" or self.choice_type == "Trait":
             return
+        
+        
+        screenshot = self.get_screenshot()
+        gray = cv2.cvtColor(screenshot.copy(), cv2.COLOR_RGB2GRAY)
+        
+        results = self.model(screenshot, iou=0.5)[0].cpu().numpy()
 
-        window = pwc.getWindowsWithTitle("Roblox")
-        if not window:
-            return
-        
-        window_rect = window[0].getClientFrame()
-        w, h = window_rect[2] - window_rect[0], window_rect[3] - window_rect[1]
-        screenshot = pyautogui.screenshot(region=(window_rect.left, window_rect.top, w, h))
-        screenshot = np.array(screenshot)
-        
-        # window_handle = win32gui.FindWindow(None, "Roblox")
-        # window_rect = win32gui.GetClientRect(window_handle)
-        # (x, y) = win32gui.ClientToScreen(window_handle, (window_rect[0], window_rect[1]))
-        # w, h = window_rect[2] + window_rect[0], window_rect[3] + window_rect[1]
-        # screenshot = pyautogui.screenshot(region=(x, y, w, h))
-        # screenshot = np.array(screenshot)
-
-        gray = cv2.cvtColor(screenshot.copy(), cv2.COLOR_BGR2GRAY)
-        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
-        
-        # resized_screenshot = imutils.resize(screenshot.copy(), width=1920)
-        # resized_screenshot = imutils.resize(screenshot.copy(), width=640)
-        
-        if w > h:
-            resized_screenshot = imutils.resize(screenshot.copy(), width=640)
-        else:
-            resized_screenshot = imutils.resize(screenshot.copy(), height=640)
-        
-        results = self.model(resized_screenshot)
-        cord = results.xyxyn[0][:, :-1].cpu().numpy()
         
         matches_dict = {}
         
         # test = screenshot.copy()
+        
+        # cv2.imwrite('./image.png', test)
+        # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+        # cv2.imshow('test', test)
+        # cv2.waitKey(0)
 
-        if cord.any():
-            for i in range(len(cord)):
-                row = cord[i]
-                if row[4] >= 0.5:
-                    x1, y1, x2, y2 = int(row[0] * w), int(row[1] * h), int(row[2] * w), int(row[3] * h)
+        for box in results.boxes:
+            if box.conf[0] >= 0.25:        
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
                     
-                    # cv2.rectangle(test, (x1-15, y1-15), (x2+15, y2+25), (0, 255, 0), 2)
-                    # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
-                    # cv2.imshow('test', test)
-                    # cv2.waitKey(0)
-                    
-                    thresh = cv2.adaptiveThreshold(gray[y1-15:y2+25, x1-15:x2+15], 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 10)
-                    thresh = self.extract_text(thresh)
-                    thresh = cv2.bitwise_not(thresh)
+                # cv2.rectangle(test, (x1-15, y1-15), (x2+15, y2+25), (0, 255, 0), 2)
+                # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+                # cv2.imshow('test', test)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+                
+                thresh = cv2.adaptiveThreshold(gray[y1-15:y2+25, x1-15:x2+15], 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 10)
+                thresh = self.extract_text(thresh)
+                thresh = cv2.bitwise_not(thresh)
 
-                    text = pytesseract.image_to_string(
-                        thresh, lang="eng", config="--psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz "
-                    )
-                    text = text.replace("\n", "")
-                    match = self.get_closest_match(text)
-                    
-                    if not match:
-                        continue
-                    
-                    print(f"{text} | {match['name']}")
-                    
-                    matches_dict[x1] = match
+                text = pytesseract.image_to_string(
+                    thresh, lang="eng", config="--psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz "
+                )
+                text = text.replace("\n", "")
+                match = self.get_closest_match(text)
+                
+                if not match:
+                    continue
+                
+                print(f"{text} | {match['name']}")
+                
+                matches_dict[x1] = match
 
         sorted_matches = [matches_dict[key] for key in sorted(matches_dict.keys())]
         
@@ -263,12 +293,17 @@ class DeepwokenOCR(QThread):
         print("Done")
     
     
+    def get_active_window_title(self):
+        hwnd = win32gui.GetForegroundWindow()
+        return win32gui.GetWindowText(hwnd)
+    
+    
     def main(self):
         key_pressed = False
         self.loadingSignal.emit(False)
         
         while True:
-            if pwc.getActiveWindowTitle() == "Roblox":
+            if self.get_active_window_title() == "Roblox":
                 if not key_pressed and (keyboard.is_pressed(self.hotkey1) or (self.hotkey2 and keyboard.is_pressed(self.hotkey2))):
                     key_pressed = True
                     
