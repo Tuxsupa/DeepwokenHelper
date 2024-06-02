@@ -5,7 +5,7 @@
   <p>
     Deepwoken Helper to help you choose your cards.
   </p>
-  <a href="https://github.com/Tuxsupa/DeepwokenHelper/releases"><img alt="Deepwoken Helper downloads" src="https://img.shields.io/github/downloads/Tuxsupa/DeepwokenHelper/total?label=Downloads"/></a>
+  <a href="https://github.com/Tuxsupa/DeepwokenHelper/releases"><img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/Tuxsupa/DeepwokenHelper/total?label=Downloads&color=green"></a>
 </div>
 
 # How does this work?
@@ -21,14 +21,16 @@ It might be prone to not being able to detect certain cards.
 https://github.com/Tuxsupa/DeepwokenHelper/assets/69093264/2ebfd1d8-cad2-4076-93e4-4674fcdaee81
 
 # Potential Enhancements
-- Testing and working macOS version.
+- Overlay showing the card info on the cards themselfs ingame.
 - Add/Remove cards manually in case of wrong detections.
 - Turn on and off the AI model so it's not always loaded in the background.
+- Testing and working macOS version.
 - Order of which stats to get first to get an optimized build.
 - Recommendation on which card to get next.
 - Better UI.
 - More settings.
 - More testing.
+- Devs of the game hopefully adding useful logs when acquiring cards so OCR isn't needed.
 
 # Build (Windows)
 It's recommended to use `.venv` and then installing the `requirements.txt` on it.\
