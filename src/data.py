@@ -1,3 +1,4 @@
+import re
 import json
 import requests
 
@@ -105,48 +106,13 @@ class Talents():
         if not self.data.stats:
             return
         
-        # filters = {
-        #     "obtainables": {
-        #         "PRE": { "name": 'PRE', "enabled": False },
-        #         "POST": { "name": 'POST', "enabled": False },
-        #         "FAV": { "name": 'FAV', "enabled": False },
-        #         "STR": { "name": 'Strength', "enabled": False },
-        #         "AGI": { "name": 'Agility', "enabled": False },
-        #         "FTD": { "name": 'Fortitude', "enabled": False },
-        #         "INT": { "name": 'Intelligence', "enabled": False },
-        #         "WIL": { "name": 'Willpower', "enabled": False },
-        #         "CHA": { "name": 'Charisma', "enabled": False }
-        #     },
-        #     "taken": {
-        #         "PRE": { "name": 'PRE', "enabled": False },
-        #         "POST": { "name": 'POST', "enabled": False },
-        #         "FAV": { "name": 'FAV', "enabled": False },
-        #         "STR": { "name": 'Strength', "enabled": False },
-        #         "AGI": { "name": 'Agility', "enabled": False },
-        #         "FTD": { "name": 'Fortitude', "enabled": False },
-        #         "INT": { "name": 'Intelligence', "enabled": False },
-        #         "WIL": { "name": 'Willpower', "enabled": False },
-        #         "CHA": { "name": 'Charisma', "enabled": False }
-        #     }
-        # }
-        
-        # old_obtainables = obtainables.copy()
-        # obtainables = {
-        #     "Advanced": {},
-        #     "Rare": {},
-        #     "Common": {},
-        #     "Oath": {},
-        #     "Quest": {},
-        #     "Murmur": {}
-        # }
-        
-        # obtainables_talent_count = 0
-        
         blacklist = {
             "categories": ['Innate', 'Angler', 'Shipwright', 'Deepwoken'],
             "talents": ['Blinded'],
             "rarities": ['Origin', 'Outfit', 'Unique', 'Equipment']
         }
+        
+        same_differences = {}
         
         for talent_name, talent in self.data.all_talents.items():
             if talent["rarity"] in blacklist["rarities"]:
@@ -155,101 +121,32 @@ class Talents():
                 continue
             if talent_name in blacklist["talents"]:
                 continue
-            
-            talent["new"] = True
+
             talent["shrine"] = False
             talent["taken"] = False
             talent["forTaken"] = []
-            # talent["locked"] = talent_name in locked_talents
+            talent["shrineTaken"] = False
             
             if not self.check_reqs('normal', talent):
                 if not self.check_reqs('shrine', talent):
                     continue
                 talent["shrine"] = True
-                # print(talent_name)
             
             
             if talent["name"] in self.data.talents:
                 talent["taken"] = True
             
             
-            # for rarity, categories in old_obtainables.items():
-            #     for category, old_talents in categories.items():
-            #         for old_talent in old_talents:
-            #             if talent_name == old_talent["name"]:
-            #                 talent["new"] = False
-            
-            # if talent["rarity"] == "Oath":
-            #     if self.data.stats["meta"]["Oath"] != talent["category"]:
-            #         continue
-            # elif talent["rarity"] == "Murmur":
-            #     if self.data.stats["meta"]["Murmur"] != talent["reqs"]["from"]:
-            #         continue
-            
-            # if talent["category"] == "Visionshaper":
-            #     if self.data.stats["meta"]["Oath"] != "Visionshaper":
-            #         continue
-            
-            # for filter_name, filter_data in filters["obtainables"].items():
-            #     if filter_data["enabled"]:
-            #         if filter_name in ['PRE', 'POST', 'FAV']:
-            #             continue
-            #         if talent["reqs"]["base"][filter_data["name"]] <= 0:
-            #             continue
-            
-            # if filters["obtainables"]["PRE"]["enabled"] and not talent["shrine"]:
-            #     continue
-            # if filters["obtainables"]["POST"]["enabled"] and talent["shrine"]:
-            #     continue
-            # if filters["obtainables"]["FAV"]["enabled"] and not talent["loved"]:
-            #     continue
-            
-            # if rollable_search.lower() in talent_name.lower() or rollable_search.lower() in talent["category"].lower():
-            #     if talent["rarity"] not in obtainables or talent["category"] not in obtainables[talent["rarity"]]:
-            #         obtainables[talent["rarity"]][talent["category"]] = []
-            #     obtainables[talent["rarity"]][talent["category"]].append(talent)
-            #     obtainables_talent_count += 1
-        
-        # for category, talents in taken_talents.items():
-        #     for talent in talents:
-        #         if self.check_reqs('normal', talent):
-        #             talent["shrine"] = False
-        #         elif self.check_reqs('shrine', talent):
-        #             talent["shrine"] = True
-        
-        # for rarity, categories in obtainables.items():
-        #     obtainables[rarity] = dict(sorted(categories.items()))
-        #     for category, talents in obtainables[rarity].items():
-        #         obtainables[rarity][category] = sorted(talents, key=lambda x: x["name"].lower())
-        
-        # taken_talents = dict(sorted(taken_talents.items()))
-        # for category, talents in taken_talents.items():
-        #     taken_talents[category] = sorted(talents, key=lambda x: x["name"].lower())
-        
-        # displayed_taken_talents = taken_talents.copy()
-        # for category, talents in displayed_taken_talents.items():
-        #     index = 0
-        #     while index < len(talents):
-        #         talent = talents[index]
-        #         for filter_name, filter_data in filters["taken"].items():
-        #             if filter_data["enabled"]:
-        #                 if filter_name in ['PRE', 'POST', 'FAV']:
-        #                     continue
-        #                 if talent["reqs"]["base"][filter_data["name"]] <= 0:
-        #                     talents.pop(index)
-        #                     index -= 1
-        #                     break
+            talent_name = re.sub(r' \[[A-Za-z]{3}\]', '', talent_name)
+            for exclusive in talent["exclusiveWith"]:
+                other_name = re.sub(r' \[[A-Za-z]{3}\]', '', exclusive.lower())
                 
-        #         if (filters["taken"]["PRE"]["enabled"] and not talent["shrine"]) or \
-        #         (filters["taken"]["POST"]["enabled"] and talent["shrine"]) or \
-        #         (filters["taken"]["FAV"]["enabled"] and not talent["loved"]):
-        #             talents.pop(index)
-        #             index -= 1
-                
-        #         index += 1
-            
-        #     if len(talents) == 0:
-        #         del displayed_taken_talents[category]
+                if talent_name == other_name:
+                    if talent_name not in same_differences:
+                        same_differences[talent_name] = [talent["name"]]
+                    
+                    if exclusive not in same_differences[talent_name]:
+                        same_differences[talent_name].append(exclusive)
         
         for talent_name in self.data.talents:
             talent = self.data.all_talents.get(talent_name.lower())
@@ -266,6 +163,47 @@ class Talents():
                     
                     if talent["shrine"]:
                         card["shrineTaken"] = True
+        
+        
+        for talent_name, diff in same_differences.items():
+            new_data = {}
+            new_reqs = {}
+            differences = {}
+            for diff_name in diff:
+                data = self.data.all_talents[diff_name.lower()]
+                
+                if not new_reqs:
+                    new_reqs = data["reqs"]
+                
+                
+                for type, value in data['reqs'].items():
+                    if isinstance(value, dict):
+                        for req_key, req_value in value.items():
+                            if new_reqs[type][req_key] != req_value:
+                                if req_value > 0:
+                                    differences[req_key] = req_value
+                                if new_reqs[type][req_key] > 0:
+                                    differences[req_key] = new_reqs[type][req_key]
+                
+            
+                if data["taken"]:
+                    new_data = data
+                    
+                self.data.all_talents.pop(diff_name.lower(), None)
+
+            if not new_data:
+                new_data = data
+            new_data["name"] = re.sub(r' \[[A-Za-z]{3}\]', '', new_data["name"])
+
+            for type, value in new_data['reqs'].items():
+                if isinstance(value, dict):
+                    for req_key, req_value in value.items():
+                        if req_key in differences:
+                            new_data['reqs'][type][req_key] = 0
+            
+            new_data["diffReqs"] = differences
+            new_data["exclusiveWith"] = [item for item in new_data["exclusiveWith"] if item not in same_differences[talent_name]]
+            self.data.all_talents[talent_name] = new_data
 
 
 class Mantras():
@@ -294,26 +232,6 @@ class Mantras():
         if not self.data.stats:
             return
 
-        # info = oaths_data['info'].get(chosen_oath)
-        # if info is None:
-        #     return
-
-        # for slot in mantra_slots:
-        #     if info['slots'].get(slot) is not None:
-        #         mantra_slots[slot] = base_mantra_slots[slot] + info['slots'][slot]
-        #     else:
-        #         mantra_slots[slot] = base_mantra_slots[slot]
-
-        # if taken_talents_store is not None:
-        #     if "Neuroplasticity" in taken_talents_store:
-        #         mantra_slots['Wildcard'] += 1
-
-        # obtainables = {
-        #     "Combat": [],
-        #     "Mobility": [],
-        #     "Support": [],
-        # }
-
         for mantra_name, mantra in self.data.all_mantras.items():
             mantra['shrine'] = False
             mantra["taken"] = False
@@ -322,29 +240,10 @@ class Mantras():
                 if not self.check_reqs("shrine", mantra):
                     continue
                 mantra['shrine'] = True
-                # print(mantra_name)
+
 
             if mantra["name"] in self.data.mantras:
                 mantra["taken"] = True
-
-            # if mantra['type'] == "Oath":
-            #     oath = mantra['reqs']['from'].split(": ")[1]
-            #     if oath != self.data.stats['meta']['Oath']:
-            #         continue
-
-            # obtainables[mantra['category']].append(mantra)
-
-        # mantra_mods = {}
-        # for category, mantras in taken_mantras.items():
-        #     for mantra in mantras:
-        #         # Push to modifications table
-        #         mantra_mods[mantra['name']] = {
-        #             'gem': mantra['gem'],
-        #             'spark': mantra['spark']
-        #         }
-        #     mantra_modifications.set(mantra_mods)
-
-        # return obtainables
 
 if __name__ == '__main__':
     DeepwokenData()

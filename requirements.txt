@@ -6,4 +6,7 @@ requests==2.31.0
 imutils==0.5.4
 keyboard==0.13.5
 ultralytics==8.2.15
+wmi==1.5.1
+onnx
+onnxruntime
 git+https://github.com/z3ntu/QtWaitingSpinner.git

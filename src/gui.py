@@ -8,14 +8,11 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 
-# from PyQt6.QtCore import Qt, QSettings, QByteArray, pyqtSlot
-# from PyQt6.QtGui import QVBoxLayout
-# from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGridLayout,
-
 from waitingspinnerwidget import QtWaitingSpinner
 
 from src.ocr import DeepwokenOCR
 from src.data import DeepwokenData
+from src.version_check import UpdateChecker
 
 
 class DeepwokenHelper(QMainWindow):
@@ -30,13 +27,15 @@ class DeepwokenHelper(QMainWindow):
         self.ocr = DeepwokenOCR(self)
         self.ocr.addCardsSignal.connect(self.add_cards)
         self.ocr.loadingSignal.connect(self.loading)
-        # self.ocr.start()
+        
+        self.main()
         
         ocr_thread = threading.Thread(target=self.ocr.run)
         ocr_thread.daemon = True
         ocr_thread.start()
         
-        self.main()
+        updateChecker = UpdateChecker(self)
+        updateChecker.check_for_updates()
 
     def load_builds(self):
         build_values = self.settings.value("builds", [])
@@ -138,24 +137,31 @@ class Tooltip(QFrame):
         
         if self.data.get('reqs'):
             if int(self.data["reqs"]["power"]) > 0:
-                power_label = QLabel(f"<b>Power</b>: {self.data['reqs']['power']}")
-                tags_layout.addWidget(power_label)
+                label = QLabel(f"<b>Power</b>: {self.data['reqs']['power']}")
+                tags_layout.addWidget(label)
                 
             for statName, statAmount in self.data["reqs"]["base"].items():
                 if statAmount != 0:
-                    base_label = QLabel(f"<b>{statName}</b>: {statAmount}")
-                    tags_layout.addWidget(base_label)
+                    label = QLabel(f"<b>{statName}</b>: {statAmount}")
+                    tags_layout.addWidget(label)
             
             if self.data["reqs"]["weapon"]:
                 for statName, statAmount in self.data["reqs"]["weapon"].items():
                     if statAmount != 0:
-                        weapon_label = QLabel(f"<b>{statName}</b>: {statAmount}")
-                        tags_layout.addWidget(weapon_label)
+                        label = QLabel(f"<b>{statName}</b>: {statAmount}")
+                        tags_layout.addWidget(label)
             
             for statName, statAmount in self.data["reqs"]["attunement"].items():
+                if statAmount != 0:
+                    label = QLabel(f"<b>{statName}</b>: {statAmount}")
+                    tags_layout.addWidget(label)
+
+        if self.data.get('diffReqs'):
+            for idx, (statName, statAmount)in enumerate(self.data["diffReqs"].items()):
                     if statAmount != 0:
-                        weapon_label = QLabel(f"<b>{statName}</b>: {statAmount}")
-                        tags_layout.addWidget(weapon_label)
+                        suffix = " <b>OR</b> " if idx+1 < len(self.data["diffReqs"]) else ""
+                        label = QLabel(f"<b>{statName}</b>: {statAmount}{suffix}")
+                        tags_layout.addWidget(label)
 
         self.main_layout.addWidget(tags)
         tags.setFixedWidth(200 - 36)
@@ -169,38 +175,33 @@ class Tooltip(QFrame):
 
     def exclusive_tooltip(self, ocr: DeepwokenOCR):
         self.has_tooltip = True
-        
+
         type_cards = ocr.get_type_card()
 
         for exclusive in self.data["exclusiveWith"]:
             if not exclusive:
                 continue
-            
+
             data_exclusive = type_cards[exclusive.lower()]
-            
+
             locked = QWidget()
             locked_layout = QHBoxLayout(locked)
             locked_layout.setContentsMargins(0, 0, 0, 0)
 
-            if data_exclusive["taken"]:
-                icon_name = "locked_important"
-            else:
-                icon_name = "locked"
-
-
+            icon_name = "locked_important" if data_exclusive["taken"] else "locked"
             lock_taken_icon = QLabel()
             lock_taken_icon.setMouseTracking(True)
-            
+
             pixmap = QPixmap(f"./assets/gui/{icon_name}.png")
             pixmap = pixmap.scaledToWidth(20)
             lock_taken_icon.setPixmap(pixmap)
             locked_layout.addWidget(lock_taken_icon)
-            
+
             lock_taken_label = QLabel(f"<b>{data_exclusive['name']}</b>:")
             lock_taken_label.setMouseTracking(True)
 
             locked_layout.addWidget(lock_taken_label, 1)
-            
+
             self.main_layout.addWidget(locked)
             locked.setFixedWidth(200 - 36)
 
@@ -213,33 +214,29 @@ class Tooltip(QFrame):
     
     def for_tooltip(self, ocr: DeepwokenOCR):
         self.has_tooltip = True
-        
+
         type_cards = ocr.get_type_card()
 
         for forTaken in self.data["forTaken"]:
             data_forTaken = type_cards[forTaken.lower()]
-            
+
             titles = QWidget()
             titles_layout = QHBoxLayout(titles)
             titles_layout.setContentsMargins(0, 0, 0, 0)
-            
-            if data_forTaken["shrine"]:
-                icon_name = "important_shrine"
-            else:
-                icon_name = "important"
-            
+
+            icon_name = "important_shrine" if data_forTaken["shrine"] else "important"
             icon = QLabel()
             icon.setMouseTracking(True)
             pixmap = QPixmap(f"./assets/gui/{icon_name}.png")
             pixmap = pixmap.scaledToWidth(20)
             icon.setPixmap(pixmap)
             titles_layout.addWidget(icon)
-            
+
             title_label = QLabel(f"<b>{forTaken}</b>:")
             titles_layout.addWidget(title_label, 1)
             self.main_layout.addWidget(titles)
             titles.setFixedWidth(200 - 36)
-            
+
             desc_label = QLabel(data_forTaken.get("desc"))
             desc_label.setWordWrap(True)
             desc_label.adjustSize()
@@ -370,17 +367,6 @@ class Card(QWidget):
             
             icons_layout.addLayout(forTaken_layout)
 
-            # forTaken_label = QLabel()
-            # forTaken_label.setMouseTracking(True)
-
-            # pixmap = QPixmap("./assets/gui/important.png")
-            # pixmap = pixmap.scaledToWidth(20)
-            # forTaken_label.setPixmap(pixmap)
-            
-            # pixmap = QPixmap("./assets/gui/important_shrine.png")
-            
-            # icons_layout.addWidget(forTaken_label)
-
 
         if icons_tooltip.has_tooltip:
             icons.enterEvent = lambda event: self.show_custom_tooltip(event, icons_tooltip)
@@ -448,7 +434,10 @@ class Stats(QWidget):
         
         # layout.addItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Policy.Expanding))
         
-        tag = QLabel("<b>@Tuxsuper</b>")
+        with open("./assets/version.txt", 'r') as file:
+            current_version = file.read() or "1.0"
+        
+        tag = QLabel(f"<b>v{current_version} @Tuxsuper</b>")
         tag.setStyleSheet("color: #000000; font-size: 12px;")
         tag.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout.addWidget(tag, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
@@ -721,12 +710,8 @@ class Stats(QWidget):
         self.save_builds()
     
     def github_clicked(self):
-        # if self.github is None:
-        #     self.github = GithubWindow(self)
-        # self.github.show()
-        
-        self.github = GithubWindow(self)
-        self.github.exec()
+        github = GithubWindow(self)
+        github.exec()
     
     def info_clicked(self):
         if self.info is None:

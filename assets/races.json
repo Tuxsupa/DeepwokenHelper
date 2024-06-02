@@ -18,50 +18,50 @@
     "racesStats": {
         "Etrean": {
             "Agility": 2,
-            "Intelligence": 2
+            "Intelligence": 3
         },
         "Celtor": {
             "Intelligence": 2,
-            "Charisma": 2
+            "Charisma": 3
         },
         "Adret": {
             "Willpower": 2,
-            "Charisma": 2
+            "Charisma": 3
         },
         "Canor": {
-            "Strength": 2,
+            "Strength": 3,
             "Charisma": 2
         },
         "Gremor": {
             "Strength": 2,
-            "Fortitude": 2
+            "Fortitude": 3
         },
         "Khan": {
-            "Strength": 2,
+            "Strength": 3,
             "Agility": 2
         },
         "Felinor": {
-            "Agility": 2,
+            "Agility": 3,
             "Charisma": 2
         },
         "Chrysid": {
             "Agility": 2,
-            "Charisma": 2
+            "Charisma": 3
         },
         "Vesperian": {
-            "Fortitude": 2,
+            "Fortitude": 3,
             "Willpower": 2
         },
         "Capra": {
-            "Intelligence": 2,
+            "Intelligence": 3,
             "Willpower": 2
         },
         "Ganymede": {
             "Intelligence": 2,
-            "Willpower": 2
+            "Willpower": 3
         },
         "Tiran": {
-            "Agility": 2,
+            "Agility": 3,
             "Willpower": 2
         },
         "Drakkard": {

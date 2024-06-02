@@ -7,7 +7,9 @@ import numpy as np
 import pytesseract
 import imutils
 import keyboard
+
 from ultralytics import YOLO
+import ultralytics.utils.torch_utils
 
 import win32gui
 import win32ui
@@ -39,7 +41,18 @@ class DeepwokenOCR(QObject):
         hotkey = settings.value("screenshotHotkey2", type=QKeySequence)
         self.hotkey2 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
         
+        
+    def fixed_get_cpu_info(self):
+        import wmi
+
+        c = wmi.WMI()
+        string = c.Win32_Processor()[0].Name
+        return string.replace("(R)", "").replace("CPU ", "").replace("@ ", "")
+        
     def run(self):
+        # Fix for flashing command line with pyinstaller
+        ultralytics.utils.torch_utils.get_cpu_info = self.fixed_get_cpu_info
+        
         self.model = YOLO('./assets/title_model.onnx', "detect")
         self.model(np.zeros((640, 640, 3), dtype=np.uint8))
         
@@ -49,20 +62,20 @@ class DeepwokenOCR(QObject):
     def get_window_log(self):
         log_location = os.environ['LOCALAPPDATA'] + r"\Roblox\logs"
         search_pattern = r"\[FLog::SurfaceController\] \[_:1\]::replaceDataModel: \(stage:0, window = (\S+?)\)"
-        
+
         files_in_folder = os.listdir(log_location)
         text_files = [file for file in files_in_folder if file.endswith(".log")]
         text_files_sorted = sorted(text_files, key=lambda x: os.path.getmtime(os.path.join(log_location, x)), reverse=True)
 
         for text_file in text_files_sorted:
             file_path = os.path.join(log_location, text_file)
-            
+
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
                 content = file.read()
                 match = re.search(search_pattern, content)
 
                 if match:
-                    hex_value = match.group(1)
+                    hex_value = match[1]
                     decimal_value = int(hex_value, 16)
 
                     if self.hwnd == decimal_value:
@@ -86,8 +99,8 @@ class DeepwokenOCR(QObject):
 
         # set the cropped coordinates offset so we can translate screenshot
         # images into actual screen positions
-        offset_x = window_rect[0] + cropped_x
-        offset_y = window_rect[1] + cropped_y
+        # offset_x = window_rect[0] + cropped_x
+        # offset_y = window_rect[1] + cropped_y
 
         # get the window image data
         wDC = win32gui.GetWindowDC(self.hwnd)
@@ -112,28 +125,26 @@ class DeepwokenOCR(QObject):
 
         img = img[...,:3]
         # img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-        img = np.ascontiguousarray(img)
         
-        return img
+        return np.ascontiguousarray(img)
 
 
     def get_choice_type(self, log_path):
         if not log_path:
             return
-        
+
         with open(log_path, 'r') as file:
             lines = file.readlines()
 
         reversed_lines = reversed(lines)
 
+        search_pattern = r"\[FLog::Output\] choicetype: (\w+)"
         for line in reversed_lines:
             line = line.strip()
-            search_pattern = r"\[FLog::Output\] choicetype: (\w+)"
             match = re.search(search_pattern, line)
 
             if match:
-                choice_type = match.group(1)
-                return choice_type
+                return match[1]
 
 
     def get_type_card(self):
@@ -231,29 +242,29 @@ class DeepwokenOCR(QObject):
     
     def process_ocr(self):
         print("Taking screenshot...")
-        
+
         self.hwnd = win32gui.FindWindow(None, "Roblox")
         if not self.hwnd:
             raise Exception('Roblox not found')
-                    
+
         log_path = self.get_window_log()
         self.choice_type = self.get_choice_type(log_path)
 
         print(self.choice_type)
-        if self.choice_type == "nil" or self.choice_type == "Trait":
+        if self.choice_type in ["nil", "Trait"]:
             return
-        
-        
+
+
         screenshot = self.get_screenshot()
         gray = cv2.cvtColor(screenshot.copy(), cv2.COLOR_RGB2GRAY)
-        
+
         results = self.model(screenshot, iou=0.5)[0].cpu().numpy()
 
-        
+
         matches_dict = {}
-        
+
         # test = screenshot.copy()
-        
+
         # cv2.imwrite('./image.png', test)
         # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
         # cv2.imshow('test', test)
@@ -262,13 +273,13 @@ class DeepwokenOCR(QObject):
         for box in results.boxes:
             if box.conf[0] >= 0.25:        
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    
+
                 # cv2.rectangle(test, (x1-15, y1-15), (x2+15, y2+25), (0, 255, 0), 2)
                 # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
                 # cv2.imshow('test', test)
                 # cv2.waitKey(0)
                 # cv2.destroyAllWindows()
-                
+
                 thresh = cv2.adaptiveThreshold(gray[y1-15:y2+25, x1-15:x2+15], 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 10)
                 thresh = self.extract_text(thresh)
                 thresh = cv2.bitwise_not(thresh)
@@ -278,18 +289,18 @@ class DeepwokenOCR(QObject):
                 )
                 text = text.replace("\n", "")
                 match = self.get_closest_match(text)
-                
+
                 if not match:
                     continue
-                
+
                 print(f"{text} | {match['name']}")
-                
+
                 matches_dict[x1] = match
 
         sorted_matches = [matches_dict[key] for key in sorted(matches_dict.keys())]
-        
+
         self.addCardsSignal.emit(sorted_matches)
-        
+
         print("Done")
     
     

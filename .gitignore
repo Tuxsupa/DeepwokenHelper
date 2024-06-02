@@ -8,3 +8,5 @@ build/
 dist/
 setups/
 setup.iss
+ruff.toml
+.sourcery.yaml

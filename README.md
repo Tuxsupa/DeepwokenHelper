@@ -24,6 +24,8 @@ https://github.com/Tuxsupa/DeepwokenHelper/assets/69093264/2ebfd1d8-cad2-4076-93
 - Testing and working macOS version.
 - Add/Remove cards manually in case of wrong detections.
 - Turn on and off the AI model so it's not always loaded in the background.
+- Order of which stats to get first to get an optimized build.
+- Recommendation on which card to get next.
 - Better UI.
 - More settings.
 - More testing.
@@ -34,14 +36,10 @@ Then you need to clone [Ultralytics Yolov5](https://github.com/ultralytics/yolov
 Finally you need to install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and paste the folder to the home directory of this repository. Don't forget to rename the folder to `tesseract` after pasting it.
 \
 \
-From the home directory of this repository, start the main script which is `gui.py`.\
-This will update any libraries that are needed for the AI model so it won't throw errors while building.\
-\
-\
 To build the application, I use PyInstaller.\
 Then, use this command on the repo's home directory for onedir output (You can use onefile but it's more susceptible to getting a false positive from a AV).
 ```
-python -m PyInstaller --noconfirm --onedir --noconsole --icon "./assets/icons/favicon.ico" --name "Deepwoken Helper" --hidden-import "ultralytics" --collect-data=ultralytics   "./src/gui.py"
+python -m PyInstaller --noconfirm --onedir --noconsole --icon "./assets/icons/favicon.ico" --name "Deepwoken Helper" --collect-data=ultralytics   "./src/gui.py"
 ```
 Finally copy `assets`, `tesseract` and `yolov5` folder into the output folder that has the new .exe.
 
