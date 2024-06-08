@@ -1,0 +1,1 @@
+from deepwokenhelper._version import __version__

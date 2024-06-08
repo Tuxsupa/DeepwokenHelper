@@ -42,7 +42,7 @@ class DeepwokenData():
     
     @staticmethod
     def getData(url):
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         
         if response.status_code == 200:
             return response.json()['content']
@@ -244,6 +244,3 @@ class Mantras():
 
             if mantra["name"] in self.data.mantras:
                 mantra["taken"] = True
-
-if __name__ == '__main__':
-    DeepwokenData()

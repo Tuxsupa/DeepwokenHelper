@@ -16,7 +16,7 @@ import win32ui
 import win32con
 
 from PyQt6.QtCore import pyqtSignal, QSettings, QObject
-from PyQt6.QtGui import QKeySequence
+from PyQt6.QtGui import QKeySequence, QWindow
 
 
 class DeepwokenOCR(QObject):
@@ -26,21 +26,10 @@ class DeepwokenOCR(QObject):
     def __init__(self, helper):
         super(DeepwokenOCR, self).__init__(helper)
         
-        from src.gui import DeepwokenHelper
+        from deepwokenhelper.gui.application import DeepwokenHelper
         self.helper: DeepwokenHelper = helper
         
         pytesseract.pytesseract.tesseract_cmd = r'./tesseract/tesseract'
-        
-        settings = QSettings("Tuxsuper", "DeepwokenHelper")
-        
-        self.giveFocus = settings.value("giveFocus", False, bool)
-        
-        hotkey = settings.value("screenshotHotkey1", QKeySequence("J"), QKeySequence)
-        self.hotkey1 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
-        
-        hotkey = settings.value("screenshotHotkey2", type=QKeySequence)
-        self.hotkey2 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
-        
         
     def fixed_get_cpu_info(self):
         import wmi
@@ -56,7 +45,8 @@ class DeepwokenOCR(QObject):
         self.model = YOLO('./assets/title_model.onnx', "detect")
         self.model(np.zeros((640, 640, 3), dtype=np.uint8))
         
-        self.main()
+        self.listener = Listener(self)
+        self.listener.start()
 
 
     def get_window_log(self):
@@ -302,35 +292,49 @@ class DeepwokenOCR(QObject):
         self.addCardsSignal.emit(sorted_matches)
 
         print("Done")
-    
+
+
+class Listener():
+    def __init__(self, ocr: DeepwokenOCR):
+        self.ocr = ocr
+        ocr.loadingSignal.emit(False)
+        
+        settings = QSettings("Tuxsuper", "DeepwokenHelper")
+        
+        self.giveFocus = settings.value("giveFocus", False, bool)
+        
+        hotkey = settings.value("screenshotHotkey1", QKeySequence("J"), QKeySequence)
+        self.hotkey1 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
+        
+        hotkey = settings.value("screenshotHotkey2", type=QKeySequence)
+        self.hotkey2 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
+        
+        self.key_pressed = False
     
     def get_active_window_title(self):
         hwnd = win32gui.GetForegroundWindow()
         return win32gui.GetWindowText(hwnd)
     
+    def on_press(self, _):
+        if not self.key_pressed and self.get_active_window_title() == "Roblox":
+            self.key_pressed = True
+            
+            if self.giveFocus:
+                self.ocr.helper.windowHandle().setVisibility(QWindow.Visibility.Windowed)
+
+            if self.ocr.helper.data:
+                self.ocr.loadingSignal.emit(True)
+                self.ocr.process_ocr()
+                self.ocr.loadingSignal.emit(False)
     
-    def main(self):
-        key_pressed = False
-        self.loadingSignal.emit(False)
-        
-        while True:
-            if self.get_active_window_title() == "Roblox":
-                if not key_pressed and (keyboard.is_pressed(self.hotkey1) or (self.hotkey2 and keyboard.is_pressed(self.hotkey2))):
-                    key_pressed = True
-                    
-                    if self.giveFocus:
-                        self.helper.activateWindow()
-                    
-                    if self.helper.data:
-                        self.loadingSignal.emit(True)
-                        self.process_ocr()
-                        self.loadingSignal.emit(False)
-                    # else:
-                        
-                    
-                elif key_pressed and not (keyboard.is_pressed(self.hotkey1) or (self.hotkey2 and keyboard.is_pressed(self.hotkey2))):
-                    key_pressed = False
-
-
-if __name__ == '__main__':
-    DeepwokenOCR()
+    def on_release(self, _):
+        self.key_pressed = False
+    
+    def start(self):
+        if self.hotkey1:
+            keyboard.on_press_key(self.hotkey1, self.on_press)
+            keyboard.on_release_key(self.hotkey1, self.on_release)
+            
+        if self.hotkey2:
+            keyboard.on_press_key(self.hotkey2, self.on_press)
+            keyboard.on_release_key(self.hotkey2, self.on_release)

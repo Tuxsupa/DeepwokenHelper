@@ -1,3 +1,7 @@
+import re
+import os
+import sys
+import toml
 import requests
 import webbrowser
 from packaging import version
@@ -5,6 +9,8 @@ from packaging import version
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
+
+import deepwokenhelper
 
 
 class UpdateChecker:
@@ -14,10 +20,7 @@ class UpdateChecker:
         
         self.settings = QSettings("Tuxsuper", "DeepwokenHelper")
         self.last_check_time = self.settings.value("last_check_time")
-        
-        with open("./assets/version.txt", 'r') as file:
-            current_version = file.read() or "1.0"
-        self.current_version = version.parse(current_version)
+        self.current_version = version.parse(deepwokenhelper.__version__)
 
     def check_for_updates(self):
         current_time = QDateTime.currentDateTime()
@@ -25,7 +28,7 @@ class UpdateChecker:
             elapsed_time = self.last_check_time.secsTo(current_time)
 
         if not self.last_check_time or elapsed_time >= 24 * 3600:
-            response = requests.get("https://api.github.com/repos/Tuxsupa/DeepwokenHelper/releases/latest")
+            response = requests.get("https://api.github.com/repos/Tuxsupa/DeepwokenHelper/releases/latest", timeout=10)
             latest_release = response.json()
 
             if latest_release:
@@ -65,3 +68,51 @@ class UpdateWindow(QMessageBox):
 
     def reject(self):
         self.close()
+
+
+class VersionChanger():
+    def __init__(self):
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            return
+        
+        if self.same_version():
+            return
+        
+        self.update_pyproject()
+        self.update_iss()
+
+    def same_version(self):
+        if not os.path.exists('pyproject.toml'):
+            return
+        
+        with open("pyproject.toml", 'r') as f:
+            pyproject_data = toml.load(f)
+
+        return pyproject_data['tool']['poetry']['version'] == deepwokenhelper.__version__
+    
+    def update_pyproject(self):
+        if not os.path.exists('pyproject.toml'):
+            return
+        
+        with open("pyproject.toml", 'r') as f:
+            pyproject_data = toml.load(f)
+
+        pyproject_data['tool']['poetry']['version'] = deepwokenhelper.__version__
+
+        with open("pyproject.toml", 'w') as f:
+            toml.dump(pyproject_data, f)
+    
+    def update_iss(self):
+        if not os.path.exists('setup.iss'):
+            return
+        
+        current_version = r'#define MyAppVersion\s+"[^"]+"'
+        new_version = f'#define MyAppVersion "{deepwokenhelper.__version__}"'
+
+        with open('setup.iss', 'r') as file:
+            filedata = file.read()
+
+        filedata = re.sub(current_version, new_version, filedata)
+
+        with open('setup.iss', 'w') as file:
+            file.write(filedata)
