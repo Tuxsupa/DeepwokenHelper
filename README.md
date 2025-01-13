@@ -33,13 +33,12 @@ https://github.com/Tuxsupa/DeepwokenHelper/assets/69093264/2ebfd1d8-cad2-4076-93
 - Devs of the game hopefully adding useful logs when acquiring cards so OCR isn't needed.
 
 # Build (Windows)
-Install [Poetry](https://python-poetry.org/docs/#installation) and use `poetry install` on the repository folder.\
-If you want to use a different python version for the `.venv`, create one beforehand and then use `poetry install` on it.\
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), use `uv python install 3.12`, `uv venv --python 3.12` and `uv sync` on the repository folder.\
 Then you need to clone [Ultralytics Yolov5](https://github.com/ultralytics/yolov5) repository onto the home directory of this repository.\
 Finally you need to install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and paste the folder to the home directory of this repository. Don't forget to rename the folder to `tesseract` after pasting it.
 \
 \
-To build the application, I use PyInstaller.\
+To build the application, I use [PyInstaller](https://pyinstaller.org/en/stable/installation.html).\
 Then, use this command on the repo's home directory for onedir output (You can use onefile but it's more susceptible to getting a false positive from a AV).
 ```
 python -m PyInstaller --noconfirm --onedir --noconsole --icon "./assets/icons/favicon.ico" --name "Deepwoken Helper" --collect-data=ultralytics   "./deepwokenhelper/__main__.py"
@@ -54,5 +53,5 @@ If you really like this project, please consider making a small donation, it rea
 
 # Special Thanks
 
-- cyfiee, who created the deepwoken builder! Go [support](https://deepwoken.co/support) his/hers website!
+- cyfiee, who created the deepwoken builder! Go [support](https://deepwoken.co/support) her website!
 - crea, for emotional support!

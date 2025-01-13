@@ -19,17 +19,18 @@ class ControlPanel(QWidget):
         self.helper: DeepwokenHelper = helper
         self.info = None
         self.settings = None
+        self.isAdding = False
         
         main_layout = QVBoxLayout(self)
         
         layout = QHBoxLayout()
         # layout.setContentsMargins(0, 0, 0, 0)
 
-        traits_widget = self.traits()
-        layout.addWidget(traits_widget, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.traits_widget = self.traits()
+        layout.addWidget(self.traits_widget, alignment=Qt.AlignmentFlag.AlignLeft)
         
-        builds_layout = self.builds()
-        layout.addLayout(builds_layout, 5)
+        self.builds_widget = self.builds()
+        layout.addWidget(self.builds_widget, 5)
         
         buttons_widget = self.buttons()
         layout.addWidget(buttons_widget, 1)
@@ -48,8 +49,6 @@ class ControlPanel(QWidget):
         spinner.setLineWidth(5)
         spinner.setInnerRadius(6)
         spinner.setRevolutionsPerSecond(1)
-        spinner.start()
-        
         self.spinner = spinner
         
         spinner.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
@@ -77,8 +76,6 @@ class ControlPanel(QWidget):
             "Proficiency": 0,
             "Songchant": 0
         }
-        if self.helper.data:
-            traits.update(self.helper.data.traits)
         
         for name, value in traits.items():
             widget = QWidget()
@@ -114,7 +111,8 @@ class ControlPanel(QWidget):
             self.trait_values[traitName].setText(str(traitValue))
 
     def builds(self):
-        build_layout = QVBoxLayout()
+        build_widget = QWidget()
+        build_layout = QVBoxLayout(build_widget)
         build_layout.setContentsMargins(0, 0, 10, 0)
 
 
@@ -157,8 +155,6 @@ class ControlPanel(QWidget):
         self.comboBox.setSizeAdjustPolicy(self.comboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         layout.addWidget(self.comboBox, 5)
         
-        self.load_builds()
-        
         build_layout.addLayout(layout)
 
 
@@ -171,8 +167,7 @@ class ControlPanel(QWidget):
         title.setStyleSheet("font-size: 15px; font-weight: 600;")
         layout.addWidget(title, 1)
 
-        stats_data = self.helper.data.stats if self.helper.data else None
-        self.buildName = QLabel(stats_data["buildName"] if stats_data else None)
+        self.buildName = QLabel()
         self.buildName.setMinimumWidth(40)
         self.buildName.setMaximumHeight(30)
         self.buildName.setStyleSheet("""background-color: transparent;
@@ -192,8 +187,8 @@ class ControlPanel(QWidget):
         title.setFixedWidth(80)
         title.setStyleSheet("font-size: 15px; font-weight: 600;")
         layout.addWidget(title, 1)
-        
-        self.buildAuthor = QLabel(stats_data["buildAuthor"] if stats_data else None)
+                
+        self.buildAuthor = QLabel()
         self.buildAuthor.setMinimumWidth(40)
         self.buildAuthor.setMaximumHeight(30)
         self.buildAuthor.setStyleSheet("""background-color: transparent;
@@ -204,40 +199,79 @@ class ControlPanel(QWidget):
         
         build_layout.addLayout(layout)
         
-        return build_layout
+        return build_widget
 
     def on_combobox_changed(self, index):
+        self.helper.loadingSignal.emit(True)
+        self.traits_widget.setEnabled(False)
+        self.builds_widget.setEnabled(False)
+        
         selectedId = self.comboBox.currentData()
         self.helper.settings.setValue("currentBuild", selectedId)
         
-        data = DeepwokenData(selectedId) 
+        if not selectedId:
+            self.update_data(None)
+            return
+        
+        self.worker = self.helper.DataWorker(self.helper, selectedId)
+        self.worker.data_ready.connect(self.update_data)
+        self.worker.start()
+    
+    def update_data(self, data: DeepwokenData):
         self.helper.data = data
+        traits = getattr(data, "traits", None)
 
-        self.update_trait_value(data.traits)
-        self.update_build_values(data.stats['buildName'], data.stats['buildAuthor'])
+        self.update_trait_value(traits)
+        self.update_build_values()
         self.helper.clear_layout(self.helper.cards_layout)
+        
+        self.isAdding = False
+        self.traits_widget.setEnabled(True)
+        self.builds_widget.setEnabled(True)
+        self.helper.loadingSignal.emit(False)
 
-    def update_build_values(self, buildName, buildAuthor):
-        self.buildName.setText(str(buildName))
-        self.buildAuthor.setText(str(buildAuthor))
+    def get_name_author(self):
+        name = ""
+        author = ""
+        
+        if not self.helper.data:
+            return name, author
+
+        stats_data = getattr(self.helper.data, "stats", {})
+        author_data = getattr(self.helper.data, "author", {})
+
+        name = stats_data.get("buildName", "")
+        author = stats_data.get("buildAuthor") or author_data.get("name", "")
+        
+        return name, author
+
+    def update_build_values(self):
+        name, author = self.get_name_author()
+        self.buildName.setText(str(name))
+        self.buildAuthor.setText(str(author))
 
     def save_builds(self):
         builds_values = [(self.comboBox.itemText(i), self.comboBox.itemData(i)) for i in range(self.comboBox.count())]
         self.helper.settings.setValue("builds", builds_values)
 
-    def load_builds(self):
+    def load_list_builds(self):
+        self.isAdding = True
+        
         build_values = self.helper.settings.value("builds", [])
         currentBuild = self.helper.settings.value("currentBuild", None)
         currentIdx = 0
 
-        for idx, (value, data) in enumerate(build_values):
-            self.comboBox.addItem(value, data)
+        for idx, (buildName, buildId) in enumerate(build_values):
+            self.comboBox.addItem(buildName, buildId)
             
-            if currentBuild == data:
+            if currentBuild == buildId:
                 currentIdx = idx
         
         self.comboBox.setCurrentIndex(currentIdx)
+        self.on_combobox_changed(currentIdx)
         self.comboBox.currentIndexChanged.connect(self.on_combobox_changed)
+        
+        return currentIdx
 
     def buttons(self):
         buttons_widget = QWidget()
@@ -302,6 +336,10 @@ class ControlPanel(QWidget):
         dlg.exec()
 
     def delete_clicked(self):
+        if self.isAdding:
+            print("Cannot delete while adding a build. Please wait.")
+            return
+        
         print("Deleting Build")
         
         index = self.comboBox.currentIndex()
@@ -311,24 +349,10 @@ class ControlPanel(QWidget):
         self.comboBox.currentIndexChanged.disconnect(self.on_combobox_changed)
         self.comboBox.removeItem(index)
         self.comboBox.currentIndexChanged.connect(self.on_combobox_changed)
-
-        currentData = self.comboBox.currentData()
-        self.helper.settings.setValue("currentBuild", currentData)
-        data = DeepwokenData(currentData) if currentData else None
-
-        self.helper.data = data
-        traits = data.traits if data else None
-        self.update_trait_value(traits)
-
-        stats = data.stats if data else None
-        buildName = stats['buildName'] if stats else ''
-        buildAuthor = stats['buildAuthor'] if stats else ''
-        self.update_build_values(buildName, buildAuthor)
         
-        self.helper.clear_layout(self.helper.cards_layout)
-
+        self.on_combobox_changed(index)
         self.save_builds()
-    
+
     def github_clicked(self):
         github = GithubWindow(self)
         github.exec()
@@ -339,6 +363,9 @@ class ControlPanel(QWidget):
         self.info.show()
 
     def settings_clicked(self):
+        if not self.helper.ocr.hotkeys:
+            return
+        
         if self.settings is None:
             self.settings = SettingsWindow(self)
         else:
@@ -349,15 +376,17 @@ class ControlPanel(QWidget):
 class AddDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(325, 75)
+        self.setFixedSize(325, 100)
         # self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.stats: ControlPanel = parent
 
         self.setWindowTitle("New Build")
         
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         
         build_layout = QHBoxLayout()
+        build_layout.setContentsMargins(9, 9, 9, 9)
         
         label = QLabel("Build Link:")
         build_layout.addWidget(label)
@@ -365,7 +394,7 @@ class AddDialog(QDialog):
         self.lineEdit = QLineEdit()
         build_layout.addWidget(self.lineEdit)
         
-        layout.addLayout(build_layout)
+        layout.addLayout(build_layout, 1)
         
         QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
 
@@ -373,37 +402,90 @@ class AddDialog(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         buttonBox.setCenterButtons(True)
+        buttonBox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
-        layout.addWidget(buttonBox)
-    
+        layout.addWidget(buttonBox, 1)
+        
+        self.info = QWidget()
+        self.info.setMinimumHeight(16)
+        
+        bottom_layout = QHBoxLayout(self.info)
+        bottom_layout.setContentsMargins(3, 0, 0, 0)
+        
+        self.icon = QLabel()
+        pixmap = QMessageBox.standardIcon(QMessageBox.Icon.Warning)
+        pixmap = pixmap.scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio)
+        self.icon.setPixmap(pixmap)
+        self.icon.hide()
+        
+        bottom_layout.addWidget(self.icon)
+        
+        self.error_label = QLabel()
+        self.error_label.setStyleSheet("font-size: 12px;")
+        self.error_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+        self.error_label.hide()
+        
+        bottom_layout.addWidget(self.error_label, 1)
+        
+        layout.addWidget(self.info)
+
     def accept(self):
-        buildId = re.findall(r"[a-zA-Z0-9]{8}$", self.lineEdit.text())
-        if not buildId:
-            self.lineEdit.clear()
-            return
+        self.stats.isAdding = True
+        self.stats.helper.loadingSignal.emit(True)
+        
+        self.worker = self.AddData(self)
+        self.worker.buildProcessed.connect(self.on_build_processed)
+        self.worker.errorOccurred.connect(self.on_error)
+        self.worker.start()
 
-        buildId = buildId[0]
-        buildLink = f"https://api.deepwoken.co/build?id={buildId}"
-        build = DeepwokenData.getData(buildLink)
-
-        if isinstance(build, str):
-            self.lineEdit.clear()
-            return
-
-        buildName = f"{buildId} - {build['stats']['buildName'] if build.get('stats') and build['stats'].get('buildName') else ''}"
-
-        if buildId not in [self.stats.comboBox.itemData(i) for i in range(self.stats.comboBox.count())]:
+    def on_build_processed(self, build_name, build_id):
+        if build_id not in [self.stats.comboBox.itemData(i) for i in range(self.stats.comboBox.count())]:
             self.stats.comboBox.currentIndexChanged.disconnect(self.stats.on_combobox_changed)
-            self.stats.comboBox.insertItem(0, buildName, buildId)
+            self.stats.comboBox.insertItem(0, build_name, build_id)
             self.stats.comboBox.setCurrentIndex(0)
             self.stats.comboBox.currentIndexChanged.connect(self.stats.on_combobox_changed)
 
             self.stats.on_combobox_changed(0)
-            self.stats.helper.clear_layout(self.stats.helper.cards_layout)
-
             self.stats.save_builds()
 
+        self.stats.helper.loadingSignal.emit(False)
         self.done(0)
+
+    def on_error(self, message):
+        self.lineEdit.clear()
+        self.stats.helper.loadingSignal.emit(False)
+        print(f"Error: {message}")
+        self.error_label.setText(f"Error: {message}")
+        self.error_label.show()
+        self.icon.show()
+
+
+    class AddData(QThread):
+        buildProcessed = pyqtSignal(str, str)
+        errorOccurred = pyqtSignal(str)
+        
+        def __init__(self, parent):
+            super().__init__()
+            self.parent: AddDialog = parent
+            self.data = self.parent.stats.helper.data
+        
+        def run(self):
+            buildIdMatch = re.findall(r"[a-zA-Z0-9]{8}$", self.parent.lineEdit.text())
+            if not buildIdMatch:
+                self.errorOccurred.emit("Invalid Build ID")
+                return
+
+            buildId = buildIdMatch[0]
+            buildLink = f"https://api.deepwoken.co/build?id={buildId}"
+            build = self.data.getData(buildLink, True)
+
+            if not build or isinstance(build, str):
+                self.errorOccurred.emit("Build not found or invalid")
+                return
+
+            buildName = f"{buildId} - {build.get('stats', {}).get('buildName', '')}"
+
+            self.buildProcessed.emit(buildName, buildId)
 
 
 class GithubWindow(QMessageBox):
@@ -590,7 +672,8 @@ class SettingsWindow(QWidget):
         super().__init__()
         
         self.stats = stats
-        self.settings = QSettings("Tuxsuper", "DeepwokenHelper")
+        self.hotkeys = stats.helper.ocr.hotkeys
+        self.settings = stats.helper.settings
         
         self.fontText = QFont()
         self.fontText.setPointSize(12)
@@ -629,6 +712,7 @@ class SettingsWindow(QWidget):
         
         key_sequence = self.settings.value("screenshotHotkey1", QKeySequence("J"))
         self.keySequence1 = QKeySequenceEdit(key_sequence)
+        self.keySequence1.setMaximumSequenceLength(1)
         self.keySequence1.setClearButtonEnabled(True)
         layout.addWidget(self.keySequence1)
         hotkey_layout.addLayout(layout)
@@ -641,6 +725,7 @@ class SettingsWindow(QWidget):
         
         key_sequence = self.settings.value("screenshotHotkey2", None)
         self.keySequence2 = QKeySequenceEdit(key_sequence)
+        self.keySequence2.setMaximumSequenceLength(1)
         self.keySequence2.setClearButtonEnabled(True)
         layout.addWidget(self.keySequence2)
         
@@ -670,9 +755,11 @@ class SettingsWindow(QWidget):
         if self.keySequence1.keySequence().isEmpty():
             self.keySequence1.setKeySequence(QKeySequence("J"))
         
-        self.stats.helper.ocr.listener.giveFocus = self.checkBox.isChecked()
-        self.stats.helper.ocr.listener.hotkey1 = self.keySequence1.keySequence().toString(QKeySequence.SequenceFormat.NativeText)
-        self.stats.helper.ocr.listener.hotkey2 = self.keySequence2.keySequence().toString(QKeySequence.SequenceFormat.NativeText)
+        self.hotkeys.giveFocus = self.checkBox.isChecked()
+        hotkey1 = self.keySequence1.keySequence()
+        hotkey2 = self.keySequence2.keySequence()
+        
+        self.hotkeys.start_listener(hotkey1, hotkey2)
         
         self.settings.setValue("giveFocus", self.checkBox.isChecked())
         self.settings.setValue("screenshotHotkey1", self.keySequence1.keySequence())

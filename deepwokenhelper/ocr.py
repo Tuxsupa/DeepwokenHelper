@@ -1,12 +1,12 @@
 import re
 import os
-import difflib
 
 import cv2
 import numpy as np
 import pytesseract
 import imutils
-import keyboard
+from pynput import keyboard
+from thefuzz import fuzz
 
 from ultralytics import YOLO
 import ultralytics.utils.torch_utils
@@ -15,39 +15,44 @@ import win32gui
 import win32ui
 import win32con
 
-from PyQt6.QtCore import pyqtSignal, QSettings, QObject
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QKeySequence, QWindow
 
 
 class DeepwokenOCR(QObject):
     addCardsSignal = pyqtSignal(list)
-    loadingSignal = pyqtSignal(bool)
+    processSignal = pyqtSignal()
     
     def __init__(self, helper):
-        super(DeepwokenOCR, self).__init__(helper)
+        super(DeepwokenOCR, self).__init__()
         
         from deepwokenhelper.gui.application import DeepwokenHelper
         self.helper: DeepwokenHelper = helper
+        self.hotkeys = None
+        
+        self.processSignal.connect(self.process_ocr)
         
         pytesseract.pytesseract.tesseract_cmd = r'./tesseract/tesseract'
         
-    def fixed_get_cpu_info(self):
-        import wmi
-
-        c = wmi.WMI()
-        string = c.Win32_Processor()[0].Name
-        return string.replace("(R)", "").replace("CPU ", "").replace("@ ", "")
+    def start(self):
+        self.helper.loadingSignal.emit(True)
         
-    def run(self):
         # Fix for flashing command line with pyinstaller
         ultralytics.utils.torch_utils.get_cpu_info = self.fixed_get_cpu_info
         
         self.model = YOLO('./assets/title_model.onnx', "detect")
         self.model(np.zeros((640, 640, 3), dtype=np.uint8))
         
-        self.listener = Listener(self)
-        self.listener.start()
+        self.hotkeys = Hotkeys(self)
+        
+        self.helper.loadingSignal.emit(False)
 
+    def fixed_get_cpu_info(self):
+        import wmi
+
+        c = wmi.WMI()
+        string = c.Win32_Processor()[0].Name
+        return string.replace("(R)", "").replace("CPU ", "").replace("@ ", "")
 
     def get_window_log(self):
         log_location = os.environ['LOCALAPPDATA'] + r"\Roblox\logs"
@@ -76,14 +81,14 @@ class DeepwokenOCR(QObject):
         # get the window size
         window_rect = win32gui.GetWindowRect(self.hwnd)
         
-        self.w = window_rect[2] - window_rect[0]
-        self.h = window_rect[3] - window_rect[1]
+        w = window_rect[2] - window_rect[0]
+        h = window_rect[3] - window_rect[1]
 
         # account for the window border and titlebar and cut them off
         border_pixels = 8
         titlebar_pixels = 30
-        self.w = self.w - (border_pixels * 2)
-        self.h = self.h - titlebar_pixels - border_pixels
+        w = w - (border_pixels * 2)
+        h = h - titlebar_pixels - border_pixels
         cropped_x = border_pixels
         cropped_y = titlebar_pixels
 
@@ -97,15 +102,15 @@ class DeepwokenOCR(QObject):
         dcObj = win32ui.CreateDCFromHandle(wDC)
         cDC = dcObj.CreateCompatibleDC()
         dataBitMap = win32ui.CreateBitmap()
-        dataBitMap.CreateCompatibleBitmap(dcObj, self.w, self.h)
+        dataBitMap.CreateCompatibleBitmap(dcObj, w, h)
         cDC.SelectObject(dataBitMap)
-        cDC.BitBlt((0, 0), (self.w, self.h), dcObj, (cropped_x, cropped_y), win32con.SRCCOPY)
+        cDC.BitBlt((0, 0), (w, h), dcObj, (cropped_x, cropped_y), win32con.SRCCOPY)
 
         # convert the raw data into a format opencv can read
         #dataBitMap.SaveBitmapFile(cDC, 'debug.bmp')
         signedIntsArray = dataBitMap.GetBitmapBits(True)
         img = np.fromstring(signedIntsArray, dtype='uint8')
-        img.shape = (self.h, self.w, 4)
+        img.shape = (h, w, 4)
 
         # free resources
         dcObj.DeleteDC()
@@ -128,7 +133,9 @@ class DeepwokenOCR(QObject):
 
         reversed_lines = reversed(lines)
 
-        search_pattern = r"\[FLog::Output\] choicetype: (\w+)"
+        # search_pattern = r"\[FLog::Output\] choicetype: (\w+)"
+        # search_pattern = r"\[PROGRESSION\] choiceType: (\w+), pointType: (\w+), choices: (\w+)"
+        search_pattern = r"\[PROGRESSION\] choiceType: (\w+)" #choiceType: Talent, pointType: Focused, choices: 5
         for line in reversed_lines:
             line = line.strip()
             match = re.search(search_pattern, line)
@@ -147,24 +154,23 @@ class DeepwokenOCR(QObject):
         elif self.choice_type == "Trait":
             return self.helper.data.traits
         
-        return self.helper.data.all_strings
-
+        return self.helper.data.all_cards
 
     def get_closest_match(self, target_string):
-        max_similarity = 0.0
+        max_similarity = 0
         closest_match = None
-
+        
         for card_key, card in self.get_type_card().items():
             card_name = card.get("name") or card_key
-            card_name = re.sub(r' \[[A-Za-z]{3}\]', '', card_name)
-
-            similarity = difflib.SequenceMatcher(None, target_string, card_name).ratio()
-
-            if similarity >= 0.5:
+            card_name = re.sub(r' \[[A-Za-z]{3}\]', '', card_name).lower()
+            
+            similarity = fuzz.ratio(target_string, card_name)
+            
+            if similarity >= 50:
                 if similarity > max_similarity:
                     max_similarity = similarity
                     closest_match = card
-
+        
         return closest_match
     
     def extract_text(self, img):
@@ -229,12 +235,15 @@ class DeepwokenOCR(QObject):
         
         return result
     
-    
+    @pyqtSlot()
     def process_ocr(self):
         print("Taking screenshot...")
+        self.helper.loadingSignal.emit(True)
 
         self.hwnd = win32gui.FindWindow(None, "Roblox")
         if not self.hwnd:
+            self.helper.loadingSignal.emit(False)
+            self.helper.errorSignal.emit('Roblox window not found.')
             raise Exception('Roblox not found')
 
         log_path = self.get_window_log()
@@ -242,6 +251,7 @@ class DeepwokenOCR(QObject):
 
         print(self.choice_type)
         if self.choice_type in ["nil", "Trait"]:
+            self.helper.loadingSignal.emit(False)
             return
 
 
@@ -292,49 +302,66 @@ class DeepwokenOCR(QObject):
         self.addCardsSignal.emit(sorted_matches)
 
         print("Done")
+        self.helper.loadingSignal.emit(False)
 
 
-class Listener():
+class Hotkeys():
     def __init__(self, ocr: DeepwokenOCR):
         self.ocr = ocr
-        ocr.loadingSignal.emit(False)
+        self.listener = None
         
-        settings = QSettings("Tuxsuper", "DeepwokenHelper")
+        settings = self.ocr.helper.settings
         
         self.giveFocus = settings.value("giveFocus", False, bool)
         
-        hotkey = settings.value("screenshotHotkey1", QKeySequence("J"), QKeySequence)
-        self.hotkey1 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
+        hotkey1 = settings.value("screenshotHotkey1", QKeySequence("J"), QKeySequence)
+        hotkey2 = settings.value("screenshotHotkey2", type=QKeySequence)
         
-        hotkey = settings.value("screenshotHotkey2", type=QKeySequence)
-        self.hotkey2 = hotkey.toString(QKeySequence.SequenceFormat.NativeText)
+        self.start_listener(hotkey1, hotkey2)
+    
+    def start_listener(self, hotkey1, hotkey2):
+        hotkey1 = self.get_fixed_hotkey(hotkey1)
+        hotkey2 = self.get_fixed_hotkey(hotkey2)
         
-        self.key_pressed = False
+        hotkeys = {
+            hotkey1: self.on_activate,
+            hotkey2: self.on_activate
+        }
+        hotkeys = self.remove_empty_hotkeys(hotkeys)
+        
+        if self.listener:
+            self.listener.stop()
+            
+        self.listener = keyboard.GlobalHotKeys(hotkeys)
+        self.listener.start()
+
+    def remove_empty_hotkeys(self, hotkeys):
+        keys_to_remove = [key for key, _ in hotkeys.items() if key == '']
+        for key in keys_to_remove:
+            del hotkeys[key]
+        
+        return hotkeys
+    
+    def get_fixed_hotkey(self, hotkey: QKeySequence):
+        hotkey: str = hotkey.toString(QKeySequence.SequenceFormat.NativeText).lower()
+
+        return (
+            hotkey.replace("ctrl", "<ctrl>")
+            .replace("shift", "<shift>")
+            .replace("alt", "<alt>")
+            .replace("cmd", "<cmd>")
+        )
     
     def get_active_window_title(self):
         hwnd = win32gui.GetForegroundWindow()
         return win32gui.GetWindowText(hwnd)
     
-    def on_press(self, _):
-        if not self.key_pressed and self.get_active_window_title() == "Roblox":
-            self.key_pressed = True
-            
+    def on_activate(self):
+        print('Global hotkey activated!')
+        
+        if self.get_active_window_title() == "Roblox":
             if self.giveFocus:
                 self.ocr.helper.windowHandle().setVisibility(QWindow.Visibility.Windowed)
 
             if self.ocr.helper.data:
-                self.ocr.loadingSignal.emit(True)
-                self.ocr.process_ocr()
-                self.ocr.loadingSignal.emit(False)
-    
-    def on_release(self, _):
-        self.key_pressed = False
-    
-    def start(self):
-        if self.hotkey1:
-            keyboard.on_press_key(self.hotkey1, self.on_press)
-            keyboard.on_release_key(self.hotkey1, self.on_release)
-            
-        if self.hotkey2:
-            keyboard.on_press_key(self.hotkey2, self.on_press)
-            keyboard.on_release_key(self.hotkey2, self.on_release)
+                self.ocr.processSignal.emit()

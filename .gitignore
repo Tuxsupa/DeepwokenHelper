@@ -1,4 +1,5 @@
 __pycache__
+.pytest_cache
 .venv/
 .vscode/
 yolov5/
@@ -6,7 +7,7 @@ tesseract/
 *.spec
 build/
 dist/
+tests/
 setups/
 setup.iss
-ruff.toml
 .sourcery.yaml

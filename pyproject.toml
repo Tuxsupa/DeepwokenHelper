@@ -1,33 +1,37 @@
-[build-system]
-requires = [ "poetry-core",]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
+requires-python = ">=3.12"
+dependencies = [
+    "PyQt6~=6.8.0",
+    "opencv-python~=4.10.0.84",
+    "pywin32==308",
+    "pynput~=1.7.7",
+    "pytesseract~=0.3.13",
+    "pytest~=8.3.4",
+    "requests~=2.32.3",
+    "imutils~=0.5.4",
+    "keyboard~=0.13.5",
+    "ultralytics~=8.3.59",
+    "WMI~=1.5.1",
+    "onnx~=1.17.0",
+    "onnxruntime~=1.20.1",
+    "toml~=0.10.2",
+    "thefuzz~=0.22.1",
+    "qtwaitingspinner @ git+https://github.com/z3ntu/QtWaitingSpinner.git",
+]
 name = "DeepwokenHelper"
-version = "1.0.2"
+version = "1.1.0"
 description = "Deepwoken Helper to help you choose your cards."
-authors = [ "Tuxsuper <69093264+Tuxsupa@users.noreply.github.com>",]
-license = "GPL-3.0-only"
 readme = "README.md"
-package-mode = false
 
-[tool.poetry.dependencies]
-python = "^3.10"
-PyQt6 = "^6.7.0"
-opencv-python = "^4.9.0.80"
-pywin32 = "^306"
-pytesseract = "^0.3.10"
-requests = "^2.32.3"
-imutils = "^0.5.4"
-keyboard = "^0.13.5"
-ultralytics = "^8.2.28"
-WMI = "^1.5.1"
-onnx = "^1.16.1"
-onnxruntime = "^1.18.0"
-toml = "^0.10.2"
+[[project.authors]]
+name = "Tuxsuper"
+email = "69093264+Tuxsupa@users.noreply.github.com"
+
+[project.license]
+text = "GPL-3.0-only"
+
+[tool.setuptools]
+packages = ["deepwokenhelper"]
 
 [tool.ruff.lint]
-ignore = [ "F405", "F403",]
-
-[tool.poetry.dependencies.qtwaitingspinner]
-git = "https://github.com/z3ntu/QtWaitingSpinner.git"
+ignore = ["F405", "F403"]

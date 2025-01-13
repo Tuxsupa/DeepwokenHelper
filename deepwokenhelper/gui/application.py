@@ -1,5 +1,3 @@
-import threading
-
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
@@ -9,42 +7,58 @@ from deepwokenhelper.gui.control_panel import ControlPanel
 
 from deepwokenhelper.ocr import DeepwokenOCR
 from deepwokenhelper.data import DeepwokenData
-from deepwokenhelper.version_check import VersionChanger, UpdateChecker
+from deepwokenhelper.version_check import *
 
 
 class DeepwokenHelper(QMainWindow):
+    loadingSignal = pyqtSignal(bool)
+    errorSignal = pyqtSignal(str)
+    
     def __init__(self):
         super().__init__()
+        self.data: DeepwokenData = None
+        self.active_tasks = 0
+        self.mutex = QMutex()
+        
+        self.loadingSignal.connect(self.loading)
+        self.errorSignal.connect(self.error_message)
         
         self.settings = QSettings("Tuxsuper", "DeepwokenHelper")
         self.read_settings()
         
-        self.data = self.load_builds()
-        
+        self.ocrThread = QThread()
         self.ocr = DeepwokenOCR(self)
+        self.ocr.moveToThread(self.ocrThread)
         self.ocr.addCardsSignal.connect(self.add_cards)
-        self.ocr.loadingSignal.connect(self.loading)
+        self.ocrThread.started.connect(self.ocr.start)
+        self.ocrThread.start()
+        
+        self.updateChecker = UpdateChecker(self)
+        self.updateChecker.update_available_signal.connect(self.show_update_window)
+        self.updateChecker.start()
         
         self.main()
         
-        ocr_thread = threading.Thread(target=self.ocr.run)
-        ocr_thread.daemon = True
-        ocr_thread.start()
-        
-        VersionChanger()
-        updateChecker = UpdateChecker(self)
-        updateChecker.check_for_updates()
+        self.stats.load_list_builds()
 
-    def load_builds(self):
-        build_values = self.settings.value("builds", [])
-        currentBuild = self.settings.value("currentBuild", None)
-
-        for _, buildId in build_values:
-            if currentBuild == buildId:
-                return DeepwokenData(buildId)
+    def show_update_window(self):
+        if self.updateChecker.github is None:
+            self.updateChecker.github = UpdateWindow(self)
+        self.updateChecker.github.show()
+    
+    
+    class DataWorker(QThread):
+        data_ready = pyqtSignal(object)
         
-        if build_values:
-            return DeepwokenData(build_values[0][1])
+        def __init__(self, helper, buildId):
+            super().__init__()
+            self.helper = helper
+            self.buildId = buildId
+
+        def run(self):
+            data = DeepwokenData(self.helper, self.buildId)
+            self.data_ready.emit(data)
+
 
     def main(self):
         self.setWindowTitle("Deepwoken Helper")
@@ -86,7 +100,6 @@ class DeepwokenHelper(QMainWindow):
         self.write_settings()
         
         super().closeEvent(event)
-        # event.accept()
 
     def clear_layout(self, layout: QBoxLayout):
         for i in reversed(range(layout.count())):
@@ -102,7 +115,25 @@ class DeepwokenHelper(QMainWindow):
     
     @pyqtSlot(bool)
     def loading(self, isStart):
+        self.mutex.lock()
+        
         if isStart:
-            self.stats.spinner.start()
+            self.active_tasks += 1
+            if self.active_tasks == 1:
+                self.stats.spinner.start()
         else:
-            self.stats.spinner.stop()
+            self.active_tasks -= 1
+            if self.active_tasks == 0:
+                self.stats.spinner.stop()
+                
+        self.mutex.unlock()
+
+    @pyqtSlot(str)
+    def error_message(self, message):
+        QMessageBox.warning(
+            self,
+            "Error",
+            message,
+            buttons=QMessageBox.StandardButton.Close,
+            defaultButton=QMessageBox.StandardButton.Close,
+        )

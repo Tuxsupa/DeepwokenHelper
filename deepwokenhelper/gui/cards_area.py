@@ -8,6 +8,7 @@ from deepwokenhelper.ocr import DeepwokenOCR
 class Tooltip(QFrame):
     def __init__(self, data: dict):
         super().__init__()
+        self.WIDTH = 200 - 36
         
         self.data = data
         self.has_tooltip = False
@@ -59,14 +60,14 @@ class Tooltip(QFrame):
                         tags_layout.addWidget(label)
 
         self.main_layout.addWidget(tags)
-        tags.setFixedWidth(200 - 36)
+        tags.setFixedWidth(self.WIDTH)
         
         desc_label = QLabel(self.data.get("desc"))
         desc_label.setWordWrap(True)
         desc_label.adjustSize()
         self.main_layout.addWidget(desc_label)
         
-        desc_label.setFixedWidth(200 - 36)
+        desc_label.setFixedWidth(self.WIDTH)
 
     def exclusive_tooltip(self, ocr: DeepwokenOCR):
         self.has_tooltip = True
@@ -98,14 +99,14 @@ class Tooltip(QFrame):
             locked_layout.addWidget(lock_taken_label, 1)
 
             self.main_layout.addWidget(locked)
-            locked.setFixedWidth(200 - 36)
+            locked.setFixedWidth(self.WIDTH)
 
             desc_label = QLabel(data_exclusive.get("desc"))
             desc_label.setWordWrap(True)
             desc_label.adjustSize()
 
             self.main_layout.addWidget(desc_label)
-            desc_label.setFixedWidth(200 - 36)
+            desc_label.setFixedWidth(self.WIDTH)
     
     def for_tooltip(self, ocr: DeepwokenOCR):
         self.has_tooltip = True
@@ -130,13 +131,13 @@ class Tooltip(QFrame):
             title_label = QLabel(f"<b>{forTaken}</b>:")
             titles_layout.addWidget(title_label, 1)
             self.main_layout.addWidget(titles)
-            titles.setFixedWidth(200 - 36)
+            titles.setFixedWidth(self.WIDTH)
 
             desc_label = QLabel(data_forTaken.get("desc"))
             desc_label.setWordWrap(True)
             desc_label.adjustSize()
             self.main_layout.addWidget(desc_label)
-            desc_label.setFixedWidth(200 - 36)
+            desc_label.setFixedWidth(self.WIDTH)
             
 
     def show_tooltip(self, x, y):
