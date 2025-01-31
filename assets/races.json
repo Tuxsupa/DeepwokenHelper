@@ -16,6 +16,7 @@
         "Lightborn"
     ],
     "racesStats": {
+        "None": {},
         "Etrean": {
             "Agility": 2,
             "Intelligence": 3
