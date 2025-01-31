@@ -8,6 +8,8 @@ import imutils
 from pynput import keyboard
 from thefuzz import fuzz
 
+from ultralytics import YOLO
+
 import win32gui
 import win32ui
 import win32con
@@ -37,7 +39,6 @@ class DeepwokenOCR(QObject):
     def start(self):
         self.helper.loadingSignal.emit(True)
         
-        from ultralytics import YOLO
         from ultralytics.utils import torch_utils
         
         # Fix for flashing command line with pyinstaller
