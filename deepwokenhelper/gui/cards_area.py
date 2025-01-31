@@ -4,6 +4,9 @@ from PyQt6.QtGui import *
 
 from deepwokenhelper.ocr import DeepwokenOCR
 
+import logging
+logger = logging.getLogger("helper")
+
 
 class Tooltip(QFrame):
     def __init__(self, data: dict):

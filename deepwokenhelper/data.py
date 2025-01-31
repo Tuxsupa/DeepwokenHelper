@@ -1,6 +1,8 @@
 import re
 import json
-import requests
+
+import logging
+logger = logging.getLogger("helper")
 
 
 class DeepwokenData():
@@ -8,10 +10,14 @@ class DeepwokenData():
         from deepwokenhelper.gui.application import DeepwokenHelper
         self.helper: DeepwokenHelper = helper
         
-        self.build = self.getData(f'https://api.deepwoken.co/build?id={buildId}')
+        if not buildId:
+            return
+        
+        logger.info(f"Getting build data from build ID: {buildId}")
+        self.build = self.helper.getData(f'https://api.deepwoken.co/build?id={buildId}')
         
         if not self.build:
-            return None
+            return
         
         self.author = self.build['author']
         self.talents = self.build.get('talents', [])
@@ -36,11 +42,11 @@ class DeepwokenData():
 		}
         self.racialStats.update(racesJson["racesStats"][self.build["stats"]["meta"]["Race"]])
 
-        self.all_talents = self.getData('https://api.deepwoken.co/get?type=talent&name=all')
-        self.all_mantras = self.getData('https://api.deepwoken.co/get?type=mantra&name=all')
+        self.all_talents = self.helper.getData('https://api.deepwoken.co/get?type=talent&name=all')
+        self.all_mantras = self.helper.getData('https://api.deepwoken.co/get?type=mantra&name=all')
         
         if not self.all_talents or not self.all_mantras:
-            return None
+            return
         
         Talents(self)
         Mantras(self)
@@ -50,26 +56,7 @@ class DeepwokenData():
         self.all_mantras['Roll 2'] = {}
 
         self.all_cards = self.all_talents | self.all_mantras
-    
-    def getData(self, url, noError=False):
-        try:
-            response = None
-            response = requests.get(url, timeout=10)
 
-            if response.status_code != 200:
-                raise requests.ConnectTimeout
-            
-            return response.json()
-            
-        except (requests.ConnectTimeout, requests.ReadTimeout):
-            error_code = "Unknown"
-            if response and response.status_code:
-                error_code = response.status_code
-            
-            if not noError:
-                print(f"Failed to fetch the web page. Status code: {error_code}")
-                self.helper.errorSignal.emit(f"""Failed to fetch the web page. Status code: {error_code}\nPlease check your internet connection and try again.""")
-    
 
 class Talents():
     def __init__(self, data: DeepwokenData):

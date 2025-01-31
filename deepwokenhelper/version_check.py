@@ -8,6 +8,9 @@ from PyQt6.QtGui import *
 
 import deepwokenhelper
 
+import logging
+logger = logging.getLogger("helper")
+
 
 class UpdateChecker(QThread):
     update_available_signal = pyqtSignal()
@@ -23,6 +26,7 @@ class UpdateChecker(QThread):
         self.current_version = version.parse(deepwokenhelper.__version__)
 
     def run(self):
+        logger.info("Checking for new updates...")
         self.helper.loadingSignal.emit(True)
         
         current_time = QDateTime.currentDateTime()
@@ -41,10 +45,11 @@ class UpdateChecker(QThread):
                     new_version = version.parse(new_version)
 
                     if new_version > self.current_version:
+                        logger.info("New version available")
                         self.update_available_signal.emit()
 
             except requests.exceptions.RequestException as e:
-                print(f"Error checking for updates: {e}")
+                logger.error(f"Error checking for updates: {e}")
                 self.helper.errorSignal.emit("Error checking for updates.\nPlease check your internet connection")
     
         self.helper.loadingSignal.emit(False)
@@ -65,6 +70,7 @@ class UpdateWindow(QMessageBox):
         self.rejected.connect(self.reject)
 
     def accept(self):
+        logger.info("Opening github update link...")
         url = "https://github.com/Tuxsupa/DeepwokenHelper/releases/latest"
         webbrowser.open(url)
         self.close()

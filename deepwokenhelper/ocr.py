@@ -8,15 +8,15 @@ import imutils
 from pynput import keyboard
 from thefuzz import fuzz
 
-from ultralytics import YOLO
-import ultralytics.utils.torch_utils
-
 import win32gui
 import win32ui
 import win32con
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QKeySequence, QWindow
+
+import logging
+logger = logging.getLogger("helper")
 
 
 class DeepwokenOCR(QObject):
@@ -37,8 +37,11 @@ class DeepwokenOCR(QObject):
     def start(self):
         self.helper.loadingSignal.emit(True)
         
+        from ultralytics import YOLO
+        from ultralytics.utils import torch_utils
+        
         # Fix for flashing command line with pyinstaller
-        ultralytics.utils.torch_utils.get_cpu_info = self.fixed_get_cpu_info
+        torch_utils.get_cpu_info = self.fixed_get_cpu_info
         
         self.model = YOLO('./assets/title_model.onnx', "detect")
         self.model(np.zeros((640, 640, 3), dtype=np.uint8))
@@ -237,7 +240,7 @@ class DeepwokenOCR(QObject):
     
     @pyqtSlot()
     def process_ocr(self):
-        print("Taking screenshot...")
+        logger.info("Taking screenshot...")
         self.helper.loadingSignal.emit(True)
 
         self.hwnd = win32gui.FindWindow(None, "Roblox")
@@ -249,7 +252,7 @@ class DeepwokenOCR(QObject):
         log_path = self.get_window_log()
         self.choice_type = self.get_choice_type(log_path)
 
-        print(self.choice_type)
+        logger.info(self.choice_type)
         if self.choice_type in ["nil", "Trait"]:
             self.helper.loadingSignal.emit(False)
             return
@@ -293,7 +296,7 @@ class DeepwokenOCR(QObject):
                 if not match:
                     continue
 
-                print(f"{text} | {match['name']}")
+                logger.info(f"{text} | {match['name']}")
 
                 matches_dict[x1] = match
 
@@ -301,7 +304,7 @@ class DeepwokenOCR(QObject):
 
         self.addCardsSignal.emit(sorted_matches)
 
-        print("Done")
+        logger.info("Done processing cards.")
         self.helper.loadingSignal.emit(False)
 
 
@@ -357,7 +360,7 @@ class Hotkeys():
         return win32gui.GetWindowText(hwnd)
     
     def on_activate(self):
-        print('Global hotkey activated!')
+        logger.info('Global hotkey activated!')
         
         if self.get_active_window_title() == "Roblox":
             if self.giveFocus:

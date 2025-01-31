@@ -1,3 +1,5 @@
+import requests
+
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
@@ -7,7 +9,10 @@ from deepwokenhelper.gui.control_panel import ControlPanel
 
 from deepwokenhelper.ocr import DeepwokenOCR
 from deepwokenhelper.data import DeepwokenData
-from deepwokenhelper.version_check import *
+from deepwokenhelper.version_check import UpdateChecker, UpdateWindow
+
+import logging
+logger = logging.getLogger("helper")
 
 
 class DeepwokenHelper(QMainWindow):
@@ -94,7 +99,12 @@ class DeepwokenHelper(QMainWindow):
         self.settings.setValue("geometry", self.saveGeometry())
 
     def read_settings(self):
-        self.restoreGeometry(self.settings.value("geometry", QByteArray()))
+        geometry: QByteArray = self.settings.value("geometry", QByteArray())
+        
+        if geometry.isEmpty():
+            self.resize(520, 480)
+        else:
+            self.restoreGeometry(geometry)
 
     def closeEvent(self, event):
         self.write_settings()
@@ -137,3 +147,22 @@ class DeepwokenHelper(QMainWindow):
             buttons=QMessageBox.StandardButton.Close,
             defaultButton=QMessageBox.StandardButton.Close,
         )
+
+    def getData(self, url, noError=False):
+        try:
+            response = None
+            response = requests.get(url, timeout=10)
+
+            if response.status_code != 200:
+                raise requests.ConnectTimeout
+            
+            return response.json()
+            
+        except requests.exceptions.RequestException:
+            error_code = "Unknown"
+            if response and response.status_code:
+                error_code = response.status_code
+            
+            if not noError:
+                logger.error(f"Failed to fetch the web page. Status code: {error_code}")
+                self.errorSignal.emit(f"""Failed to fetch the web page. Status code: {error_code}\nPlease check your internet connection and try again.""")

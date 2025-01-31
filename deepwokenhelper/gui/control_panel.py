@@ -10,6 +10,9 @@ from waitingspinnerwidget import QtWaitingSpinner
 import deepwokenhelper
 from deepwokenhelper.data import DeepwokenData
 
+import logging
+logger = logging.getLogger("helper")
+
 
 class ControlPanel(QWidget):
     def __init__(self, helper):
@@ -330,17 +333,17 @@ class ControlPanel(QWidget):
         return buttons_widget
 
     def add_clicked(self):
-        print("Adding Build")
+        logger.info("Adding Build")
 
         dlg = AddDialog(self)
         dlg.exec()
 
     def delete_clicked(self):
         if self.isAdding:
-            print("Cannot delete while adding a build. Please wait.")
+            logger.info("Cannot delete while adding a build. Please wait.")
             return
         
-        print("Deleting Build")
+        logger.info("Deleting Build")
         
         index = self.comboBox.currentIndex()
         if index == -1:
@@ -439,22 +442,24 @@ class AddDialog(QDialog):
         self.worker.start()
 
     def on_build_processed(self, build_name, build_id):
-        if build_id not in [self.stats.comboBox.itemData(i) for i in range(self.stats.comboBox.count())]:
-            self.stats.comboBox.currentIndexChanged.disconnect(self.stats.on_combobox_changed)
-            self.stats.comboBox.insertItem(0, build_name, build_id)
-            self.stats.comboBox.setCurrentIndex(0)
-            self.stats.comboBox.currentIndexChanged.connect(self.stats.on_combobox_changed)
+        self.stats.comboBox.currentIndexChanged.disconnect(self.stats.on_combobox_changed)
+        self.stats.comboBox.insertItem(0, build_name, build_id)
+        self.stats.comboBox.setCurrentIndex(0)
+        self.stats.comboBox.currentIndexChanged.connect(self.stats.on_combobox_changed)
 
-            self.stats.on_combobox_changed(0)
-            self.stats.save_builds()
+        self.stats.on_combobox_changed(0)
+        self.stats.save_builds()
 
         self.stats.helper.loadingSignal.emit(False)
         self.done(0)
 
     def on_error(self, message):
+        self.stats.isAdding = False
+        logger.warning(f"Error: {message}")
+        
         self.lineEdit.clear()
         self.stats.helper.loadingSignal.emit(False)
-        print(f"Error: {message}")
+        
         self.error_label.setText(f"Error: {message}")
         self.error_label.show()
         self.icon.show()
@@ -467,25 +472,35 @@ class AddDialog(QDialog):
         def __init__(self, parent):
             super().__init__()
             self.parent: AddDialog = parent
-            self.data = self.parent.stats.helper.data
+            self.stats = self.parent.stats
+            self.helper = self.stats.helper
         
         def run(self):
-            buildIdMatch = re.findall(r"[a-zA-Z0-9]{8}$", self.parent.lineEdit.text())
-            if not buildIdMatch:
-                self.errorOccurred.emit("Invalid Build ID")
-                return
+            try:
+                buildIdMatch = re.findall(r"[a-zA-Z0-9]{8}$", self.parent.lineEdit.text())
+                if not buildIdMatch:
+                    self.errorOccurred.emit("Invalid Build ID")
+                    return
 
-            buildId = buildIdMatch[0]
-            buildLink = f"https://api.deepwoken.co/build?id={buildId}"
-            build = self.data.getData(buildLink, True)
+                buildId = buildIdMatch[0]
+                if buildId in [self.stats.comboBox.itemData(i) for i in range(self.stats.comboBox.count())]:
+                    self.errorOccurred.emit("Build already loaded")
+                    return
+                
+                buildLink = f"https://api.deepwoken.co/build?id={buildId}"
+                build = self.helper.getData(buildLink, True)
 
-            if not build or isinstance(build, str):
-                self.errorOccurred.emit("Build not found or invalid")
-                return
+                if not build or isinstance(build, str):
+                    self.errorOccurred.emit("Build not found or invalid")
+                    return
 
-            buildName = f"{buildId} - {build.get('stats', {}).get('buildName', '')}"
+                buildName = f"{buildId} - {build.get('stats', {}).get('buildName', '')}"
 
-            self.buildProcessed.emit(buildName, buildId)
+                self.buildProcessed.emit(buildName, buildId)
+                
+            except Exception as e:
+                logger.exception(e)
+                raise e
 
 
 class GithubWindow(QMessageBox):
@@ -504,6 +519,7 @@ class GithubWindow(QMessageBox):
         self.rejected.connect(self.reject)
 
     def accept(self):
+        logger.info("Opening github...")
         url = "https://github.com/Tuxsupa/DeepwokenHelper"
         webbrowser.open(url)
         self.close()
@@ -742,13 +758,15 @@ class SettingsWindow(QWidget):
         main_layout.addWidget(buttonBox)
 
     def load_settings(self):
+        logger.info("Loading settings")
+        
         checked = self.settings.value("giveFocus", False, bool)
         self.checkBox.setChecked(checked)
         
         key_sequence = self.settings.value("screenshotHotkey1", QKeySequence("J"), QKeySequence)
         self.keySequence1.setKeySequence(key_sequence)
         
-        key_sequence = self.settings.value("screenshotHotkey2")
+        key_sequence = self.settings.value("screenshotHotkey2", QKeySequence())
         self.keySequence2.setKeySequence(key_sequence)
 
     def accept(self):
@@ -764,7 +782,7 @@ class SettingsWindow(QWidget):
         self.settings.setValue("giveFocus", self.checkBox.isChecked())
         self.settings.setValue("screenshotHotkey1", self.keySequence1.keySequence())
         self.settings.setValue("screenshotHotkey2", self.keySequence2.keySequence())
-        print("Changes saved.")
+        logger.info("Settings changes saved.")
         
         self.hide()
 
