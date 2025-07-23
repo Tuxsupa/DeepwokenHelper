@@ -110,7 +110,7 @@ class DeepwokenOCR(QObject):
         elif self.choice_type == "Whisper":
             return self.helper.data.all_mantras
 
-        elif self.choice_type == "Trait":
+        elif self.choice_type == "Trait":  # Skipped
             return self.helper.data.traits
 
         return self.helper.data.all_cards
@@ -222,7 +222,8 @@ class DeepwokenOCR(QObject):
         self.choice_type = self.get_choice_type(self.log_path)
 
         logger.info(self.choice_type)
-        if self.choice_type in ["nil", "Trait"]:
+        if self.choice_type in ["Trait"]:
+            # TODO: "nil" needed for extra hands but might give out errors with other hands that also give out "nil"
             self.helper.stop_loading_signal.emit()
             return
 
