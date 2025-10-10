@@ -11,7 +11,6 @@ build/
 dist/
 tests/
 setups/
-setup.iss
 .sourcery.yaml
 build.py
 version_info.txt
