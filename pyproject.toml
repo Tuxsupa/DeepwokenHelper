@@ -1,21 +1,18 @@
 [project]
 requires-python = ">=3.12"
 dependencies = [
-    "PyQt6~=6.9.1",
-    "opencv-python~=4.12.0.88",
-    "platformdirs~=4.3.8",
-    "pywin32==311",
-    "pynput~=1.8.1",
-    "pytesseract~=0.3.13",
-    "pytest~=8.4.1",
-    "requests~=2.32.4",
-    "imutils~=0.5.4",
-    # "ultralytics[onnx]~=8.3.156",
-    # "WMI~=1.5.1",
-    "onnx==1.17.0",
-    "onnxruntime==1.20.1",
-    "thefuzz~=0.22.1",
-    "windows-capture~=1.5.0",
+    "PyQt6>=6.10.1",
+    "opencv-python>=4.12.0.88",
+    "platformdirs>=4.5.1",
+    "pywin32>=311",
+    "pynput>=1.8.1",
+    "pytesseract>=0.3.13",
+    "requests>=2.32.5",
+    "imutils>=0.5.4",
+    "onnx>=1.20.0",
+    "onnxruntime>=1.23.2",
+    "thefuzz>=0.22.1",
+    "windows-capture>=1.5.0",
     "qtwaitingspinner @ git+https://github.com/z3ntu/QtWaitingSpinner.git",
 ]
 name = "DeepwokenHelper"
@@ -29,8 +26,19 @@ name = "Tuxsuper"
 [project.license]
 text = "GPL-3.0-only"
 
-[tool.setuptools]
-packages = ["deepwokenhelper"]
+[dependency-groups]
+dev = ["toml>=0.10.2", "pyinstaller>=6.17.0", "pytest>=9.0.1"]
 
 [tool.ruff.lint]
 ignore = ["F405", "F403"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["deepwokenhelper"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+    "testing",
+]
