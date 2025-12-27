@@ -1,5 +1,6 @@
 import logging
 import webbrowser
+from typing import TYPE_CHECKING
 
 import requests
 from packaging import version
@@ -9,17 +10,20 @@ from PyQt6.QtWidgets import *
 
 import deepwokenhelper
 
+if TYPE_CHECKING:
+    from deepwokenhelper.gui.application import DeepwokenHelper
+
+
 logger = logging.getLogger("helper")
 
 
 class UpdateChecker(QThread):
     update_available_signal = pyqtSignal()
 
-    def __init__(self, helper=None):
+    def __init__(self, helper: "DeepwokenHelper" = None):
         super().__init__()
-        from deepwokenhelper.gui.application import DeepwokenHelper
 
-        self.helper: DeepwokenHelper = helper
+        self.helper = helper
         self.github = None
 
         self.settings = self.helper.settings
@@ -62,7 +66,7 @@ class UpdateChecker(QThread):
 
 
 class UpdateWindow(QMessageBox):
-    def __init__(self, helper=None):
+    def __init__(self, helper: "DeepwokenHelper" = None):
         super().__init__(helper)
 
         self.setWindowTitle("New Release")

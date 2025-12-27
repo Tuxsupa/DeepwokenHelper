@@ -5,6 +5,7 @@ import subprocess
 import sys
 import webbrowser
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
@@ -14,16 +15,18 @@ from waitingspinnerwidget import QtWaitingSpinner
 import deepwokenhelper
 from deepwokenhelper.data import DeepwokenData
 
+if TYPE_CHECKING:
+    from deepwokenhelper.gui.application import DeepwokenHelper
+
+
 logger = logging.getLogger("helper")
 
 
 class ControlPanel(QWidget):
-    def __init__(self, helper):
+    def __init__(self, helper: "DeepwokenHelper"):
         super().__init__()
 
-        from deepwokenhelper.gui.application import DeepwokenHelper
-
-        self.helper: DeepwokenHelper = helper
+        self.helper = helper
         self.info = None
         self.settings = None
         self.isAdding = False

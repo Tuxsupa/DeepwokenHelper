@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import threading
+from typing import TYPE_CHECKING
 
 import cv2
 import imutils
@@ -20,6 +21,9 @@ from windows_capture import Frame, InternalCaptureControl, WindowsCapture
 
 from deepwokenhelper.gui.control_panel import ScreenshotMethod
 
+if TYPE_CHECKING:
+    from deepwokenhelper.gui.application import DeepwokenHelper
+
 logger = logging.getLogger("helper")
 
 
@@ -27,12 +31,10 @@ class DeepwokenOCR(QObject):
     addCardsSignal = pyqtSignal(list)
     processSignal = pyqtSignal()
 
-    def __init__(self, helper):
+    def __init__(self, helper: "DeepwokenHelper"):
         super(DeepwokenOCR, self).__init__()
 
-        from deepwokenhelper.gui.application import DeepwokenHelper
-
-        self.helper: DeepwokenHelper = helper
+        self.helper = helper
         self.hotkeys = None
 
         self.processSignal.connect(self.process_ocr)

@@ -1,15 +1,18 @@
 import json
 import logging
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from deepwokenhelper.gui.application import DeepwokenHelper
+
 
 logger = logging.getLogger("helper")
 
 
 class DeepwokenData:
-    def __init__(self, helper, buildId: str):
-        from deepwokenhelper.gui.application import DeepwokenHelper
-
-        self.helper: DeepwokenHelper = helper
+    def __init__(self, helper: "DeepwokenHelper", buildId: str):
+        self.helper = helper
 
         if not buildId:
             return
