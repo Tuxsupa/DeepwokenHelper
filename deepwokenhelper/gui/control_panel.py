@@ -618,7 +618,8 @@ class AddDialog(QDialog):
                     self.errorOccurred.emit("Build already loaded")
                     return
 
-                buildLink = f"https://api.deepwoken.co/build?id={buildId}"
+                # buildLink = f"https://deepwoken.co/builder?id={buildId}"
+                buildLink = f'https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id={buildId}&options={{"signal":{{}}}}'
                 build = self.helper.getData(buildLink, True)
 
                 if not build or isinstance(build, str):

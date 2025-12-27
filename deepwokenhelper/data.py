@@ -16,7 +16,11 @@ class DeepwokenData:
             return
 
         logger.info(f"Getting build data from build ID: {buildId}")
-        self.build = self.helper.getData(f"https://api.deepwoken.co/build?id={buildId}")
+
+        # f"https://api.deepwoken.co/build?id={buildId}"
+        self.build = self.helper.getData(
+            f'https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id={buildId}&options={{"signal":{{}}}}'
+        )
 
         if not self.build:
             return
@@ -50,12 +54,15 @@ class DeepwokenData:
             racesJson["racesStats"][self.build["stats"]["meta"]["Race"]]
         )
 
-        self.all_talents = self.helper.getData(
-            "https://api.deepwoken.co/get?type=talent&name=all"
+        # "https://api.deepwoken.co/get?type=talent&name=all"
+        # "https://api.deepwoken.co/get?type=mantra&name=all"
+
+        info: dict = self.helper.getData(
+            'https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all&options={"signal":{}}'
         )
-        self.all_mantras = self.helper.getData(
-            "https://api.deepwoken.co/get?type=mantra&name=all"
-        )
+
+        self.all_talents = info.get("talents", {})
+        self.all_mantras = info.get("mantras", {})
 
         if not self.all_talents or not self.all_mantras:
             return
