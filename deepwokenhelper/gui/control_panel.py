@@ -1,22 +1,18 @@
-import re
-import os
-import sys
-import subprocess
 import logging
+import os
+import re
+import subprocess
+import sys
 import webbrowser
 from enum import Enum
 
-
 from PyQt6.QtCore import *
-from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
-
+from PyQt6.QtWidgets import *
 from waitingspinnerwidget import QtWaitingSpinner
-
 
 import deepwokenhelper
 from deepwokenhelper.data import DeepwokenData
-
 
 logger = logging.getLogger("helper")
 

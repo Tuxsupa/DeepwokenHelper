@@ -1,7 +1,6 @@
-import re
 import json
 import logging
-
+import re
 
 logger = logging.getLogger("helper")
 

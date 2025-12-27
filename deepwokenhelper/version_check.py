@@ -1,16 +1,13 @@
 import logging
-import requests
 import webbrowser
+
+import requests
 from packaging import version
-
-
 from PyQt6.QtCore import *
-from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
-
+from PyQt6.QtWidgets import *
 
 import deepwokenhelper
-
 
 logger = logging.getLogger("helper")
 

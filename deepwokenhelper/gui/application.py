@@ -1,19 +1,15 @@
-import requests
 import logging
 
-
+import requests
 from PyQt6.QtCore import *
-from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
 
-
+from deepwokenhelper.data import DeepwokenData
 from deepwokenhelper.gui.cards_area import Card
 from deepwokenhelper.gui.control_panel import ControlPanel
-
 from deepwokenhelper.ocr import DeepwokenOCR
-from deepwokenhelper.data import DeepwokenData
 from deepwokenhelper.version_check import UpdateChecker, UpdateWindow
-
 
 logger = logging.getLogger("helper")
 

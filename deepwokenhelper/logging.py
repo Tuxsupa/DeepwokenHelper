@@ -1,12 +1,9 @@
+import logging
 import os
 from datetime import datetime, timezone
-
-import logging
 from logging import FileHandler
 
-
 from platformdirs import user_data_dir
-
 
 LOG_FOLDER = os.path.join(user_data_dir("DeepwokenHelper", False), "logs")
 MAX_FOLDER_SIZE_MB = 50

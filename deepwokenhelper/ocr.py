@@ -1,29 +1,24 @@
-import re
-import os
-import threading
-import logging
 import contextlib
-
+import logging
+import os
+import re
+import threading
 
 import cv2
-import numpy as np
-import pytesseract
 import imutils
-from pynput import keyboard
-from thefuzz import fuzz
+import numpy as np
 import onnxruntime as ort
-from windows_capture import WindowsCapture, Frame, InternalCaptureControl
-
+import pytesseract
+import win32con
 import win32gui
 import win32ui
-import win32con
-
+from pynput import keyboard
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QKeySequence, QWindow
-
+from thefuzz import fuzz
+from windows_capture import Frame, InternalCaptureControl, WindowsCapture
 
 from deepwokenhelper.gui.control_panel import ScreenshotMethod
-
 
 logger = logging.getLogger("helper")
 

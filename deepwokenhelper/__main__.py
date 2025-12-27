@@ -1,15 +1,12 @@
-import sys
 import logging
+import sys
 from multiprocessing import freeze_support
-
 
 from PyQt6.QtWidgets import QApplication
 
-
 import deepwokenhelper
-from deepwokenhelper.logging import init_logging, cleanup_logs
 from deepwokenhelper.gui.application import DeepwokenHelper
-
+from deepwokenhelper.logging import cleanup_logs, init_logging
 
 logger = logging.getLogger("helper")
 
