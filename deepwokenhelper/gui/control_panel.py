@@ -958,10 +958,10 @@ class SettingsWindow(QWidget):
         self.comboBox.addItem("BitBlt (Windows 7+)", ScreenshotMethod.BITBLT)
         self.comboBox.addItem("WGC (Windows 10+ | Yellow Bars)", ScreenshotMethod.WGC)
 
-        screenshotMethod = self.settings.value(
-            "screenshotMethod", ScreenshotMethod.AUTOMATIC, ScreenshotMethod
+        screenshot_method_value = self.settings.value(
+            "screenshotMethod", ScreenshotMethod.AUTOMATIC.value, int
         )
-        self.comboBox.setCurrentIndex(screenshotMethod.value)
+        self.comboBox.setCurrentIndex(screenshot_method_value)
 
         stylesheet = f"""
             QComboBox {{
@@ -1003,10 +1003,10 @@ class SettingsWindow(QWidget):
         key_sequence = self.settings.value("screenshotHotkey2", QKeySequence())
         self.keySequence2.setKeySequence(key_sequence)
 
-        screenshotMethod = self.settings.value(
-            "screenshotMethod", ScreenshotMethod.AUTOMATIC, ScreenshotMethod
+        screenshot_method_value = self.settings.value(
+            "screenshotMethod", ScreenshotMethod.AUTOMATIC.value, int
         )
-        self.comboBox.setCurrentIndex(screenshotMethod.value)
+        self.comboBox.setCurrentIndex(screenshot_method_value)
 
     def accept(self):
         if self.keySequence1.keySequence().isEmpty():
@@ -1021,7 +1021,8 @@ class SettingsWindow(QWidget):
         self.settings.setValue("giveFocus", self.checkBox.isChecked())
         self.settings.setValue("screenshotHotkey1", self.keySequence1.keySequence())
         self.settings.setValue("screenshotHotkey2", self.keySequence2.keySequence())
-        self.settings.setValue("screenshotMethod", self.comboBox.currentData())
+        screenshot_method: ScreenshotMethod = self.comboBox.currentData()
+        self.settings.setValue("screenshotMethod", screenshot_method.value)
         logger.info("Settings changes saved.")
 
         self.hide()

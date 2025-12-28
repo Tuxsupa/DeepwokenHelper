@@ -460,9 +460,10 @@ class Screenshot:
 
         settings = ocr.helper.settings
 
-        self.screenshot_method = settings.value(
-            "screenshotMethod", ScreenshotMethod.AUTOMATIC, ScreenshotMethod
+        raw_value = settings.value(
+            "screenshotMethod", ScreenshotMethod.AUTOMATIC.value, int
         )
+        self.screenshot_method = ScreenshotMethod(raw_value)
 
         window_rect = win32gui.GetWindowRect(self.hwnd)
         self.client_rect = win32gui.GetClientRect(self.hwnd)
