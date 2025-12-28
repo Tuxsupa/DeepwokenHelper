@@ -963,12 +963,12 @@ class SettingsWindow(QWidget):
         )
         self.comboBox.setCurrentIndex(screenshot_method_value)
 
-        stylesheet = f"""
-            QComboBox {{
-                font-size: {self.fontText.pointSize()}px;
+        stylesheet = """
+            QComboBox {
+                font-size: 9pt;
                 padding: 0px 0px 0px 0px;
                 padding-left: 3px;
-            }}
+            }
         """
 
         self.comboBox.setStyleSheet(stylesheet)
