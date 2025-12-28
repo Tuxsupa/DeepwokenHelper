@@ -1,4 +1,5 @@
 import logging
+import typing
 
 import requests
 from PyQt6.QtCore import *
@@ -29,7 +30,7 @@ class DeepwokenHelper(QMainWindow):
         self.stop_loading_signal.connect(self.stop_loading)
         self.errorSignal.connect(self.error_message)
 
-        self.settings = QSettings("Tuxsuper", "DeepwokenHelper")
+        self.settings = Settings("Tuxsuper", "DeepwokenHelper")
         self.read_settings()
 
         self.ocrThread = QThread()
@@ -180,3 +181,21 @@ class DeepwokenHelper(QMainWindow):
                 self.errorSignal.emit(
                     f"""Failed to fetch the web page. Status code: {error_code}\nPlease check your internet connection and try again."""
                 )
+
+
+class Settings(QSettings):
+    def value(self, key, defaultValue=..., type=...) -> typing.Any:
+        try:
+            if defaultValue is ... and type is ...:
+                return super().value(key)
+            elif type is ...:
+                return super().value(key, defaultValue=defaultValue)
+            elif defaultValue is ...:
+                return super().value(key, type=type)
+            else:
+                return super().value(key, defaultValue=defaultValue, type=type)
+        except Exception as e:
+            logger.error(f"Error retrieving setting {key}: {e}")
+            self.remove(key)
+            self.sync()
+            return defaultValue
