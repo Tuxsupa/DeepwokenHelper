@@ -32,7 +32,7 @@ https://github.com/Tuxsupa/DeepwokenHelper/assets/69093264/2ebfd1d8-cad2-4076-93
 - Devs of the game hopefully adding useful logs when acquiring cards so AI/OCR isn't needed.
 
 # Build (Windows)
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), use `uv python install 3.12`, `uv venv --python 3.12` and `uv sync` on the repository folder.\
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), use `uv python install 3.13`, `uv venv --python 3.13` and `uv sync` on the repository folder.\
 Finally you need to install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and paste the folder to the home directory of this repository. Don't forget to rename the folder to `tesseract` after pasting it.
 
 To build the application, I use [PyInstaller](https://pyinstaller.org/en/stable/installation.html).\
